@@ -1,0 +1,11 @@
+## Interface: 30300
+## Title: NSAuk
+## Notes: Аукцион через канал Шеф
+## Author: gse orca
+## Version: 1.0
+## SavedVariables: NSAukGlobal
+##SavedVariablesPerCharacter: NSAuk, nsHD
+
+NSAuk.lua
+NSHk.lua
+NSAukGuildBank.lua
