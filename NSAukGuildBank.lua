@@ -1,11 +1,10 @@
 -- NSAukGuildBank.lua: Класс гильдбанка для аддона NSAuk (WoW 3.3.5)
--- Версия: 5.2 (Исправлена синхронизация и дублирование)
+-- Версия: 6.2 (Исправлено отображение для ретрансляторов и форматирование)
 NSAukGuildBankClass = {}
 NSAukGuildBankClass.__index = NSAukGuildBankClass
-
-local SEND_DELAY = 0.01
+local SEND_DELAY = 0.05
 local AUTO_SCAN_DELAY = 0.1
-local SCAN_SESSION_TIMEOUT = 5
+local SCAN_COOLDOWN = 20
 local SCAN_FINISH_DELAY = 1.0
 local PREFIX_END = "ns_GBEnd"
 
@@ -34,6 +33,7 @@ function NSAukGuildBankClass.new(parentAddon)
     self.itemEntries = {}
     self.ownershipData = {}
     self.scanCooldown = false
+    self.cooldownRemaining = 0
     self.isScanning = false
     self.sendQueue = {}
     self.sendFrame = nil
@@ -49,10 +49,11 @@ function NSAukGuildBankClass.new(parentAddon)
     self.receivedOwnersThisScan = {}
     self.scanFinishFrame = nil
     self.sessionFinalizeFrame = nil
+    self.cooldownFrame = nil
     self.tradeClosedProcessed = false
     self.tradePartnerName = nil
     self.tradeStartMoney = 0
-    self.incomingBuffers = {} -- Буфер входящих данных по отправителям
+    self.incomingBuffers = {}
 
     if not NSAukGlobal then NSAukGlobal = {} end
     if not NSAukGlobal.guildBanks then NSAukGlobal.guildBanks = {} end
@@ -60,6 +61,7 @@ function NSAukGuildBankClass.new(parentAddon)
     if not NSAukGlobal['золото'] then NSAukGlobal['золото'] = {} end
     if not NSAukGlobal['баланс'] then NSAukGlobal['баланс'] = {} end
     if not NSAukGlobal.guildBankTimestamps then NSAukGlobal.guildBankTimestamps = {} end
+    if not NSAukGlobal.guildBankVersions then NSAukGlobal.guildBankVersions = {} end
 
     self:RegisterAddonChatHandler()
     self:RegisterTradeEvents()
@@ -281,10 +283,10 @@ function NSAukGuildBankClass:GetItemFullInfo(itemLink)
         itemLevel = iLevel or 0,
         reqLevel = reqLevel or 0,
         class = class or "Разное",
-        subclass = subclass or " ",
+        subclass = subclass or "",
         maxStack = maxStack or 1,
-        equipSlot = equipSlot or " ",
-        texture = texture or " ",
+        equipSlot = equipSlot or "",
+        texture = texture or "",
         sellPrice = sellPrice or 0,
         sellPriceGold = (sellPrice or 0) / 10000
     }
@@ -448,7 +450,6 @@ function NSAukGuildBankClass:OnTradeEvent(event, arg1, arg2, arg3)
                 if not NSAukGlobal['золото'] then NSAukGlobal['золото'] = {} end
                 NSAukGlobal['баланс'][partnerName] = (NSAukGlobal['баланс'][partnerName] or 0) + itemBalance
                 NSAukGlobal['золото'][partnerName] = (NSAukGlobal['золото'][partnerName] or 0) + moneyDiff
-
                 local totalBalance = NSAukGlobal['баланс'][partnerName]
                 local totalGold = NSAukGlobal['золото'][partnerName]
 
@@ -497,7 +498,6 @@ function NSAukGuildBankClass:CreateUI()
     title:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, -10)
     title:SetText('Гильдбанк "Ночной Стражи"')
     title:SetTextColor(0.2, 0.8, 1)
-
     local clearBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
     clearBtn:SetSize(80, 24)
     clearBtn:SetPoint("TOPLEFT", frame, "TOPLEFT", -155, 32)
@@ -514,7 +514,6 @@ function NSAukGuildBankClass:CreateUI()
         StaticPopup_Show("NSAUK_CLEAR_GUILDBANK")
     end)
     self.clearBtn = clearBtn
-
     local scanBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
     scanBtn:SetSize(160, 24)
     scanBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -200, -10)
@@ -684,12 +683,14 @@ end
 function NSAukGuildBankClass:ClearAllGuildBanks(suppressBroadcast)
     if not NSAukGlobal then NSAukGlobal = {} end
     if not NSAukGlobal.guildBanks then NSAukGlobal.guildBanks = {} end
+    if not NSAukGlobal.guildBankVersions then NSAukGlobal.guildBankVersions = {} end
     local clearedCount = 0
     for ownerName, items in pairs(NSAukGlobal.guildBanks) do
         if type(items) == "table" and #items > 0 then
             clearedCount = clearedCount + 1
         end
         NSAukGlobal.guildBanks[ownerName] = {}
+        NSAukGlobal.guildBankVersions[ownerName] = 0
     end
     if not suppressBroadcast then
         SendAddonMessage("ns_GBClearAll", UnitName("player"), "GUILD")
@@ -741,6 +742,8 @@ function NSAukGuildBankClass:BuildLocalItemList()
     end
     NSAukGlobal.guildBanks[myName] = myItems
     NSAukGlobal.guildBankTimestamps[myName] = GetTime()
+    if not NSAukGlobal.guildBankVersions then NSAukGlobal.guildBankVersions = {} end
+    NSAukGlobal.guildBankVersions[myName] = (NSAukGlobal.guildBankVersions[myName] or 0) + 1
 end
 
 function NSAukGuildBankClass:AggregateItems(itemTables)
@@ -815,7 +818,7 @@ function NSAukGuildBankClass:SortItemsByClassSubclassQualityName(item_data)
         local itemLink = entry.link
         local count = entry.count
         local name, link, quality, iLevel, reqLevel, class, subclass, maxStack, equipSlot, texture, sellPrice
-        if string.find(itemLink or " ", "|Hgold:") then
+        if string.find(itemLink or "", "|Hgold:") then
             name = "Золото"
             quality = 5
             class = "Разное"
@@ -896,7 +899,6 @@ end
 function NSAukGuildBankClass:FinalizeScan()
     if not self.isScanning then return end
     self.isScanning = false
-    self.scanCooldown = false
     if self.scanBtn then
         self.scanBtn:SetText("Просканировать")
         self.scanBtn:Enable()
@@ -909,7 +911,6 @@ function NSAukGuildBankClass:FinalizeScan()
 end
 
 function NSAukGuildBankClass:RefreshDisplay()
-    if self.isScanning then return end
     local sortedItems = self:PrepareDisplayData()
     local totalGold = 0
     for _, entry in ipairs(sortedItems) do
@@ -925,7 +926,9 @@ function NSAukGuildBankClass:RefreshDisplay()
         self:DisplayItems(sortedItems)
         if self.statusText then
             local currentText = self.statusText:GetText() or ""
-            self.statusText:SetText(currentText .. goldStr)
+            if not string.find(currentText, "Золото") then
+                self.statusText:SetText(currentText .. goldStr)
+            end
         end
     else
         if self.frame and self.frame:IsShown() then
@@ -938,22 +941,46 @@ end
 
 function NSAukGuildBankClass:BroadcastGuildBankData(ownersList)
     if not ownersList or #ownersList == 0 then
-        SendAddonMessage(PREFIX_END, UnitName("player"), "GUILD")
+        SendAddonMessage(PREFIX_END, UnitName("player") .. " 0", "GUILD")
         return
     end
+
     self.sendQueue = {}
-    local timestamp = GetTime()
+    local myName = UnitName("player")
+    local myVersion = (NSAukGlobal.guildBankVersions and NSAukGlobal.guildBankVersions[myName]) or 0
+
     for _, ownerName in ipairs(ownersList) do
         local items = NSAukGlobal.guildBanks[ownerName]
         if items and type(items) == "table" and #items > 0 then
             local consolidated = self:ConsolidateItems(items)
             local sortedItems = self:SortItemsByClassSubclassQualityName(consolidated)
+            local versionToSend = 0
+
+            if ownerName == myName then
+                versionToSend = NSAukGlobal.guildBankVersions[myName] or 1
+            else
+                versionToSend = (NSAukGlobal.guildBankVersions and NSAukGlobal.guildBankVersions[ownerName]) or 0
+            end
+
+            -- Обновляем локальную таблицу данными, которые отправляем (для себя и ретранслятора)
+            local localVersion = (NSAukGlobal.guildBankVersions and NSAukGlobal.guildBankVersions[ownerName]) or 0
+            if versionToSend >= localVersion then
+                NSAukGlobal.guildBanks[ownerName] = consolidated
+                if not NSAukGlobal.guildBankVersions then
+                    NSAukGlobal.guildBankVersions = {}
+                end
+                NSAukGlobal.guildBankVersions[ownerName] = versionToSend
+                NSAukGlobal.guildBankTimestamps[ownerName] = GetTime()
+            end
+
             for idx, entry in ipairs(sortedItems) do
-                local msgStr = string.format("%s %s %d %f", ownerName, entry.link, entry.count, timestamp)
+                local msgStr = string.format("%s %s %d", ownerName, entry.link, entry.count)
                 table.insert(self.sendQueue, { prefix = "ns_MyGb", message = msgStr })
             end
+            table.insert(self.sendQueue, { prefix = PREFIX_END, message = ownerName .. "   " .. versionToSend })
         end
     end
+
     if #self.sendQueue > 0 and not self.sendFrame then
         self.sendFrame = CreateFrame("Frame")
         self.sendFrame.owner = self
@@ -966,41 +993,139 @@ function NSAukGuildBankClass:BroadcastGuildBankData(ownersList)
                     SendAddonMessage(packet.prefix, packet.message, "GUILD")
                     sf.lastSendTime = now
                 else
-                    SendAddonMessage(PREFIX_END, UnitName("player"), "GUILD")
                     sf:SetScript("OnUpdate", nil)
                     sf:Hide()
                     sf.owner.sendFrame = nil
+                    -- Если сканирование было активным, завершаем его после отправки
+                    if sf.owner.isScanning then
+                        sf.owner:FinalizeScan()
+                    end
                 end
             end
         end)
         self.sendFrame:Show()
     elseif #self.sendQueue == 0 then
-        SendAddonMessage(PREFIX_END, UnitName("player"), "GUILD")
+        -- Если очередь пуста сразу (не должно быть при наличии данных), завершаем сканирование
+        if self.isScanning then
+            self:FinalizeScan()
+        end
+    end
+    -- Принудительное обновление UI удалено, чтобы не показывать старые данные до получения новых
+end
+
+function NSAukGuildBankClass:StartCooldownTimer()
+    self.scanCooldown = true
+    self.cooldownRemaining = SCAN_COOLDOWN
+    if self.scanBtn then
+        self.scanBtn:Disable()
+        self.scanBtn:SetText(string.format("Ждите %d сек", self.cooldownRemaining))
+    end
+    if not self.cooldownFrame then
+        self.cooldownFrame = CreateFrame("Frame")
+    end
+    self.cooldownFrame.owner = self
+    self.cooldownFrame.startTime = GetTime()
+    self.cooldownFrame:SetScript("OnUpdate", function(frame)
+        local elapsed = GetTime() - frame.startTime
+        local remaining = math.ceil(SCAN_COOLDOWN - elapsed)
+        frame.owner.cooldownRemaining = remaining
+
+        if frame.owner.scanBtn then
+            if remaining > 0 then
+                frame.owner.scanBtn:SetText(string.format("Ждите %d сек", remaining))
+            else
+                frame.owner.scanBtn:SetText("Просканировать")
+            end
+        end
+
+        if elapsed >= SCAN_COOLDOWN then
+            frame.owner.scanCooldown = false
+            frame.owner.cooldownRemaining = 0
+            if frame.owner.scanBtn then
+                frame.owner.scanBtn:Enable()
+                frame.owner.scanBtn:SetText("Просканировать")
+            end
+            frame:SetScript("OnUpdate", nil)
+            frame:Hide()
+        end
+    end)
+    self.cooldownFrame:Show()
+end
+
+function NSAukGuildBankClass:OnScanRequestReceived(sender)
+    if not NSAukGlobal or not NSAukGlobal.guildBanks or not NSAukGlobal.guildBanksSettings then return end
+    local myName = UnitName("player")
+    local isBank = self:IsGuildBankCharacter()
+    local showBank = NSAukGlobal.guildBanksSettings[myName] and NSAukGlobal.guildBanksSettings[myName].showGuildBank
+    local shouldSend = false
+    local ownersToSend = {}
+
+    -- Отвечаем только если мы гильдбанк или ретранслятор
+    if not isBank and not showBank then
+        shouldSend = false
+    elseif isBank and not showBank then
+        shouldSend = true
+        self:BuildLocalItemList()
+        self:UpdateGoldInTable()
+        table.insert(ownersToSend, myName)
+    elseif isBank and showBank then
+        shouldSend = true
+        self:BuildLocalItemList()
+        self:UpdateGoldInTable()
+        table.insert(ownersToSend, myName)
+        for ownerName, items in pairs(NSAukGlobal.guildBanks) do
+            if ownerName ~= myName and type(items) == "table" and #items > 0 then
+                table.insert(ownersToSend, ownerName)
+            end
+        end
+    elseif not isBank and showBank then
+        shouldSend = true
+        for ownerName, items in pairs(NSAukGlobal.guildBanks) do
+            if type(items) == "table" and #items > 0 then
+                table.insert(ownersToSend, ownerName)
+            end
+        end
+    end
+
+    if shouldSend then
+        self.scanSessionStart = GetTime()
+        self.scanSessionActive = true
+        self.receivedOwnersThisScan = {}
+        self:BroadcastGuildBankData(ownersToSend)
     end
 end
 
 function NSAukGuildBankClass:ScanGuildBank()
-    if self.scanCooldown then return end
-    self.scanCooldown = true
+    if self.scanCooldown then
+        return
+    end
+
     self.isScanning = true
     self.scanSessionStart = GetTime()
     self.scanSessionActive = true
     self.receivedOwnersThisScan = {}
-    self.incomingBuffers = {} -- Очистка буферов при новом скане
+    self.incomingBuffers = {}
+
     local myName = UnitName("player")
     local isBank = self:IsGuildBankCharacter()
     local showBank = NSAukGlobal.guildBanksSettings and NSAukGlobal.guildBanksSettings[myName] and NSAukGlobal.guildBanksSettings[myName].showGuildBank
+
     if self.scanBtn then
         self.scanBtn:Disable()
         self.scanBtn:SetText("Сканирую...")
     end
+
     if self.statusText then
         self.statusText:SetText("Отправка запроса на сканирование...")
         self.statusText:SetTextColor(1, 1, 0)
     end
+
     self.itemEntries = {}
     self.ownershipData = {}
+    
+    -- Очищаем список товаров в окне при начале сканирования
     self:ClearGrid()
+
     if not NSAukGlobal or not NSAukGlobal.guildBanks then
         if self.statusText then
             self.statusText:SetText("Ошибка данных. Перезагрузите аддон")
@@ -1009,28 +1134,21 @@ function NSAukGuildBankClass:ScanGuildBank()
         self.isScanning = false
         return
     end
+
+    -- Все клиенты отправляют запрос, включая гильдбанк
     SendAddonMessage("ns_ScanGB", myName, "GUILD")
+
+    -- Гильдбанк обновляет свои данные и отправляет их в ответ на запрос
     if isBank then
         self:BuildLocalItemList()
         self:UpdateGoldInTable()
-        self:BroadcastGuildBankData({myName})
     end
-    local scanTimeoutFrame = CreateFrame("Frame")
-    scanTimeoutFrame.startTime = GetTime()
-    scanTimeoutFrame.owner = self
-    scanTimeoutFrame:SetScript("OnUpdate", function(cf)
-        if GetTime() - cf.startTime >= SCAN_SESSION_TIMEOUT then
-            cf.owner.scanSessionActive = false
-            cf.owner.receivedOwnersThisScan = {}
-            cf.owner.incomingBuffers = {}
-            cf:SetScript("OnUpdate", nil)
-            cf:Hide()
-            if cf.owner.isScanning then
-                cf.owner:FinalizeScan()
-            end
-        end
-    end)
-    scanTimeoutFrame:Show()
+
+    -- Обрабатываем запрос локально сразу (чтобы ретранслятор видел данные)
+    self:OnScanRequestReceived(myName)
+
+    -- Запускаем таймер кулдауна кнопки
+    self:StartCooldownTimer()
 end
 
 function NSAukGuildBankClass:ClearGrid()
@@ -1098,7 +1216,7 @@ function NSAukGuildBankClass:DisplayItems(item_data)
         [7] = { r = 0.9, g = 0.8, b = 0.5 }
     }
     for i, entry in ipairs(item_data) do
-        local skipGold = string.find(entry.link or " ", "|Hgold:")
+        local skipGold = string.find(entry.link or "", "|Hgold:")
         if not skipGold then
             local item_id = entry.id
             local item_link = entry.link
@@ -1176,13 +1294,13 @@ function NSAukGuildBankClass:DisplayItems(item_data)
                     GameTooltip:SetText(f.item_link or "Золото", 1, 1, 1)
                     GameTooltip:AddLine(string.format("Количество: %d", f.count or 0), 1, 1, 0)
                 end
-                if f.count and f.count > 1 and not string.find(f.item_link or " ", "|Hgold:") then
+                if f.count and f.count > 1 and not string.find(f.item_link or "", "|Hgold:") then
                     GameTooltip:AddLine(string.format("Всего в гильдбанке: %d", f.count), 1, 1, 0)
                 end
                 local owners = f.owner:GetItemOwners(f.item_link or f.item_id)
                 if owners and #owners > 0 then
-                    GameTooltip:AddLine("               ")
-                    GameTooltip:AddLine("Находится у:  ", 0.8, 0.8, 1.0)
+                    GameTooltip:AddLine("                 ")
+                    GameTooltip:AddLine("Находится у:    ", 0.8, 0.8, 1.0)
                     local maxOwnersToShow = 5
                     local ownersShown = 0
                     for _, ownerData in ipairs(owners) do
@@ -1243,7 +1361,7 @@ function NSAukGuildBankClass:DisplayItems(item_data)
     local unique_items = 0
     local class_counts = {}
     for _, entry in ipairs(item_data) do
-        local skipGoldStats = string.find(entry.link or " ", "|Hgold:")
+        local skipGoldStats = string.find(entry.link or "", "|Hgold:")
         if not skipGoldStats then
             total_items = total_items + entry.count
             unique_items = unique_items + 1
@@ -1275,7 +1393,7 @@ function NSAukGuildBankClass:DisplayItems(item_data)
         table.insert(classStats, string.format("Другое: %d", otherCount))
     end
     if #classStats > 0 then
-        statsText = statsText .. " [    " .. table.concat(classStats, ",    ") .. " ]   "
+        statsText = statsText .. " [      " .. table.concat(classStats, ",      ") .. " ]     "
     end
     if self.statusText then
         self.statusText:SetText(statsText)
@@ -1291,87 +1409,29 @@ function NSAukGuildBankClass:RegisterAddonChatHandler()
         local myName = UnitName("player")
         if channel ~= "GUILD" then return end
         if sender == myName then return end
-
         if prefix == "ns_ScanGB" then
-            if not NSAukGlobal or not NSAukGlobal.guildBanks or not NSAukGlobal.guildBanksSettings then return end
-            local isBank = self.owner:IsGuildBankCharacter()
-            local showBank = NSAukGlobal.guildBanksSettings[myName] and NSAukGlobal.guildBanksSettings[myName].showGuildBank
-            local shouldSend = false
-            local ownersToSend = {}
-            if not isBank and not showBank then
-                shouldSend = false
-            elseif isBank and not showBank then
-                shouldSend = true
-                self.owner:BuildLocalItemList()
-                self.owner:UpdateGoldInTable()
-                table.insert(ownersToSend, myName)
-            elseif isBank and showBank then
-                shouldSend = true
-                self.owner:BuildLocalItemList()
-                self.owner:UpdateGoldInTable()
-                table.insert(ownersToSend, myName)
-                for ownerName, items in pairs(NSAukGlobal.guildBanks) do
-                    if ownerName ~= myName and type(items) == "table" and #items > 0 then
-                        table.insert(ownersToSend, ownerName)
-                    end
-                end
-            elseif not isBank and showBank then
-                shouldSend = true
-                for ownerName, items in pairs(NSAukGlobal.guildBanks) do
-                    if type(items) == "table" and #items > 0 then
-                        table.insert(ownersToSend, ownerName)
-                    end
-                end
-            end
-            if shouldSend then
-                self.owner.scanSessionStart = GetTime()
-                self.owner.scanSessionActive = true
-                self.owner.receivedOwnersThisScan = {}
-                self.owner:BroadcastGuildBankData(ownersToSend)
-                if not self.owner.sessionFinalizeFrame then
-                    self.owner.sessionFinalizeFrame = CreateFrame("Frame")
-                    self.owner.sessionFinalizeFrame.owner = self.owner
-                    self.owner.sessionFinalizeFrame:SetScript("OnUpdate", function(sff)
-                        if GetTime() - sff.owner.scanSessionStart >= SCAN_SESSION_TIMEOUT then
-                            sff.owner.scanSessionActive = false
-                            sff.owner.receivedOwnersThisScan = {}
-                            sff:SetScript("OnUpdate", nil)
-                            sff:Hide()
-                        end
-                    end)
-                    self.owner.sessionFinalizeFrame:Show()
-                end
-            end
+            self.owner:OnScanRequestReceived(sender)
             return
         end
 
         if prefix == "ns_MyGb" then
             local parts = mysplit(message)
-            if #parts < 4 then return end
+            if #parts < 3 then return end
             local ownerName = parts[1]
-            local timestamp = tonumber(parts[#parts])
-            local count = tonumber(parts[#parts - 1])
-            local itemLink = table.concat(parts, " ", 2, #parts - 2)
-            if not count or count <= 0 or not timestamp then return end
+            local count = tonumber(parts[#parts])
+            local itemLink = table.concat(parts, " ", 2, #parts - 1)
+            if not count or count <= 0 then return end
 
-            -- Инициализация буфера для отправителя
-            if not self.owner.incomingBuffers[sender] then
-                self.owner.incomingBuffers[sender] = {}
+            if not self.owner.incomingBuffers[ownerName] then
+                self.owner.incomingBuffers[ownerName] = { items = {}, finalized = false }
             end
 
-            -- Инициализация буфера для владельца внутри отправителя
-            if not self.owner.incomingBuffers[sender][ownerName] then
-                self.owner.incomingBuffers[sender][ownerName] = { items = {}, timestamp = 0 }
+            local buffer = self.owner.incomingBuffers[ownerName]
+            if buffer.finalized then
+                buffer.items = {}
+                buffer.finalized = false
             end
 
-            local buffer = self.owner.incomingBuffers[sender][ownerName]
-
-            -- Обновляем timestamp буфера если новый больше
-            if timestamp > buffer.timestamp then
-                buffer.timestamp = timestamp
-            end
-
-            -- Добавляем предмет в буфер
             local _, _, itemIDStr = string.find(itemLink, "item:(%d+):")
             local itemID = itemIDStr and tonumber(itemIDStr) or 0
             if itemID and itemID > 0 or string.find(itemLink, "|Hgold:") then
@@ -1391,24 +1451,33 @@ function NSAukGuildBankClass:RegisterAddonChatHandler()
         end
 
         if prefix == PREFIX_END then
-            -- Завершение получения от sender
-            if self.owner.incomingBuffers[sender] then
-                for ownerName, buffer in pairs(self.owner.incomingBuffers[sender]) do
-                    local existingTimestamp = NSAukGlobal.guildBankTimestamps[ownerName] or 0
-                    -- Если данные новее тех, что есть в глобальной таблице
-                    if buffer.timestamp > existingTimestamp then
-                        NSAukGlobal.guildBanks[ownerName] = buffer.items
-                        NSAukGlobal.guildBankTimestamps[ownerName] = buffer.timestamp
-                    end
+            local parts = mysplit(message)
+            if #parts < 2 then return end
+            local ownerName = parts[1]
+            local version = tonumber(parts[2])
+
+            if not ownerName or not version then return end
+
+            if self.owner.incomingBuffers[ownerName] then
+                local buffer = self.owner.incomingBuffers[ownerName]
+                local existingVersion = (NSAukGlobal.guildBankVersions and NSAukGlobal.guildBankVersions[ownerName]) or 0
+
+                if version > existingVersion then
+                    NSAukGlobal.guildBanks[ownerName] = buffer.items
+                    if not NSAukGlobal.guildBankVersions then NSAukGlobal.guildBankVersions = {} end
+                    NSAukGlobal.guildBankVersions[ownerName] = version
+                    NSAukGlobal.guildBankTimestamps[ownerName] = GetTime()
+
+                    -- Потоковая отрисовка: обновляем UI сразу при получении актуальной таблицы
+                    self.owner:RefreshDisplay()
                 end
-                -- Очищаем буфер отправителя
-                self.owner.incomingBuffers[sender] = nil
+
+                self.owner.incomingBuffers[ownerName] = nil
             end
 
+            -- Завершаем сканирование после задержки
             if self.owner.isScanning then
-                if self.owner.scanFinishFrame then
-                    self.owner.scanFinishFrame.startTime = GetTime()
-                else
+                if not self.owner.scanFinishFrame then
                     self.owner.scanFinishFrame = CreateFrame("Frame")
                     self.owner.scanFinishFrame.owner = self.owner
                     self.owner.scanFinishFrame.startTime = GetTime()
@@ -1506,5 +1575,4 @@ if not StaticPopupDialogs["NSAUK_CLEAR_GUILDBANK"] then
         preferredIndex = 3
     }
 end
-
 NSAukGuildBank = NSAukGuildBankClass

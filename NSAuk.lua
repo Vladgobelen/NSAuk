@@ -1,5 +1,5 @@
 -- NSAuk: Аукционный помощник для World of Warcraft 3.3.5
--- Версия 3.0.1 (исправлена задержка проверки типа игрока)
+-- Версия 3.0.2 (Клиент: Разделение Онлайн/Офлайн, исправление форматирования)
 
 function mysplit(inputstr, sep)
     if sep == nil then
@@ -14,130 +14,62 @@ end
 
 -- === Таблица разделов (жёстко в коде) ===
 local NSAukRazdely = {
-    ["Задания    "] = {
-        ["Задания    "] = {},
+    ["Задания     "] = { ["Задания     "] = {} },
+    ["Разное     "] = {
+        ["Хлам     "] = {}, ["Реагенты     "] = {}, ["Питомцы     "] = {},
+        ["Праздничные предметы     "] = {}, ["Другое     "] = {},
+        ["Верховые животные     "] = {},
     },
-    ["Разное    "] = {
-        ["Хлам    "] = {},
-        ["Реагенты    "] = {},
-        ["Питомцы    "] = {},
-        ["Праздничные предметы    "] = {},
-        ["Другое    "] = {},
-        ["Верховые животные    "] = {},
+    ["Самоцветы     "] = {
+        ["Красные     "] = {}, ["Синие     "] = {}, ["Желтые     "] = {},
+        ["Фиолетовые     "] = {}, ["Зеленые     "] = {}, ["Оранжевые     "] = {},
+        ["Особые     "] = {}, ["Простые     "] = {}, ["Радужные     "] = {},
     },
-    ["Самоцветы    "] = {
-        ["Красные    "] = {},
-        ["Синие    "] = {},
-        ["Желтые    "] = {},
-        ["Фиолетовые    "] = {},
-        ["Зеленые    "] = {},
-        ["Оранжевые    "] = {},
-        ["Особые    "] = {},
-        ["Простые    "] = {},
-        ["Радужные    "] = {},
+    ["Рецепты     "] = {
+        ["Книга     "] = {}, ["Кожевничество     "] = {}, ["Портняжное дело     "] = {},
+        ["Инженерное дело     "] = {}, ["Кузнечное дело     "] = {}, ["Кулинария     "] = {},
+        ["Алхимия     "] = {}, ["Первая помощь     "] = {}, ["Наложение чар     "] = {},
+        ["Рыбная ловля     "] = {}, ["Ювелирное дело     "] = {}, ["Начертание     "] = {},
     },
-    ["Рецепты    "] = {
-        ["Книга    "] = {},
-        ["Кожевничество    "] = {},
-        ["Портняжное дело    "] = {},
-        ["Инженерное дело    "] = {},
-        ["Кузнечное дело    "] = {},
-        ["Кулинария    "] = {},
-        ["Алхимия    "] = {},
-        ["Первая помощь    "] = {},
-        ["Наложение чар    "] = {},
-        ["Рыбная ловля    "] = {},
-        ["Ювелирное дело    "] = {},
-        ["Начертание    "] = {},
+    ["Амуниция     "] = { ["Колчан     "] = {}, ["Подсумок     "] = {} },
+    ["Боеприпасы     "] = { ["Стрелы     "] = {}, ["Пули     "] = {} },
+    ["Хозяйственные товары     "] = {
+        ["Стихии     "] = {}, ["Ткань     "] = {}, ["Кожа     "] = {},
+        ["Металл и камень     "] = {}, ["Мясо     "] = {}, ["Трава     "] = {},
+        ["Наложение чар     "] = {}, ["Ювелирное дело     "] = {}, ["Детали     "] = {},
+        ["Устройства     "] = {}, ["Взрывчатка     "] = {}, ["Материалы     "] = {},
+        ["Другое     "] = {}, ["Чары для доспехов     "] = {}, ["Чары для оружия     "] = {},
     },
-    ["Амуниция    "] = {
-        ["Колчан    "] = {},
-        ["Подсумок    "] = {},
+    ["Символы     "] = {
+        ["Воин     "] = {}, ["Паладин     "] = {}, ["Охотник     "] = {},
+        ["Разбойник     "] = {}, ["Жрец     "] = {}, ["Шаман     "] = {},
+        ["Рыцарь смерти     "] = {}, ["Маг     "] = {}, ["Чернокнижник     "] = {},
+        ["Друид     "] = {},
     },
-    ["Боеприпасы    "] = {
-        ["Стрелы    "] = {},
-        ["Пули    "] = {},
+    ["Расходуемые     "] = {
+        ["Еда и напитки     "] = {}, ["Зелья     "] = {}, ["Эликсиры     "] = {},
+        ["Настойки     "] = {}, ["Бинты     "] = {}, ["Улучшения     "] = {},
+        ["Свитки     "] = {}, ["Другое     "] = {},
     },
-    ["Хозяйственные товары    "] = {
-        ["Стихии    "] = {},
-        ["Ткань    "] = {},
-        ["Кожа    "] = {},
-        ["Металл и камень    "] = {},
-        ["Мясо    "] = {},
-        ["Трава    "] = {},
-        ["Наложение чар    "] = {},
-        ["Ювелирное дело    "] = {},
-        ["Детали    "] = {},
-        ["Устройства    "] = {},
-        ["Взрывчатка    "] = {},
-        ["Материалы    "] = {},
-        ["Другое    "] = {},
-        ["Чары для доспехов    "] = {},
-        ["Чары для оружия    "] = {},
+    ["Сумки     "] = {
+        ["Сумка     "] = {}, ["Сумка душ     "] = {}, ["Сумка травника     "] = {},
+        ["Сумка зачаровывателя     "] = {}, ["Сумка инженера     "] = {},
+        ["Сумка ювелира     "] = {}, ["Сумка шахтера     "] = {},
+        ["Сумка кожевника     "] = {}, ["Сумка начертателя     "] = {},
     },
-    ["Символы    "] = {
-        ["Воин    "] = {},
-        ["Паладин    "] = {},
-        ["Охотник    "] = {},
-        ["Разбойник    "] = {},
-        ["Жрец    "] = {},
-        ["Шаман    "] = {},
-        ["Рыцарь смерти    "] = {},
-        ["Маг    "] = {},
-        ["Чернокнижник    "] = {},
-        ["Друид    "] = {},
+    ["Доспехи     "] = {
+        ["Разное     "] = {}, ["Тканевые     "] = {}, ["Кожаные     "] = {},
+        ["Кольчужные     "] = {}, ["Латные     "] = {}, ["Щиты     "] = {},
+        ["Манускрипты     "] = {}, ["Идолы     "] = {}, ["Тотемы     "] = {},
+        ["Печати     "] = {},
     },
-    ["Расходуемые    "] = {
-        ["Еда и напитки    "] = {},
-        ["Зелья    "] = {},
-        ["Эликсиры    "] = {},
-        ["Настойки    "] = {},
-        ["Бинты    "] = {},
-        ["Улучшения    "] = {},
-        ["Свитки    "] = {},
-        ["Другое    "] = {},
-    },
-    ["Сумки    "] = {
-        ["Сумка    "] = {},
-        ["Сумка душ    "] = {},
-        ["Сумка травника    "] = {},
-        ["Сумка зачаровывателя    "] = {},
-        ["Сумка инженера    "] = {},
-        ["Сумка ювелира    "] = {},
-        ["Сумка шахтера    "] = {},
-        ["Сумка кожевника    "] = {},
-        ["Сумка начертателя    "] = {},
-    },
-    ["Доспехи    "] = {
-        ["Разное    "] = {},
-        ["Тканевые    "] = {},
-        ["Кожаные    "] = {},
-        ["Кольчужные    "] = {},
-        ["Латные    "] = {},
-        ["Щиты    "] = {},
-        ["Манускрипты    "] = {},
-        ["Идолы    "] = {},
-        ["Тотемы    "] = {},
-        ["Печати    "] = {},
-    },
-    ["Оружие    "] = {
-        ["Одноручные топоры    "] = {},
-        ["Двуручные топоры    "] = {},
-        ["Луки    "] = {},
-        ["Огнестрельное    "] = {},
-        ["Одноручное дробящее    "] = {},
-        ["Двуручное дробящее    "] = {},
-        ["Древковое    "] = {},
-        ["Одноручные мечи    "] = {},
-        ["Двуручные мечи    "] = {},
-        ["Посохи    "] = {},
-        ["Кистевое    "] = {},
-        ["Разное    "] = {},
-        ["Кинжалы    "] = {},
-        ["Метательное    "] = {},
-        ["Арбалеты    "] = {},
-        ["Жезлы    "] = {},
-        ["Удочки    "] = {},
+    ["Оружие     "] = {
+        ["Одноручные топоры     "] = {}, ["Двуручные топоры     "] = {}, ["Луки     "] = {},
+        ["Огнестрельное     "] = {}, ["Одноручное дробящее     "] = {},
+        ["Двуручное дробящее     "] = {}, ["Древковое     "] = {}, ["Одноручные мечи     "] = {},
+        ["Двуручные мечи     "] = {}, ["Посохи     "] = {}, ["Кистевое     "] = {},
+        ["Разное     "] = {}, ["Кинжалы     "] = {}, ["Метательное     "] = {},
+        ["Арбалеты     "] = {}, ["Жезлы     "] = {}, ["Удочки     "] = {},
     }
 }
 
@@ -193,7 +125,6 @@ NSAuk.items = NSAuk.items or {}
 if not NSAuk.originalUIParentOnKeyDown then
     NSAuk.originalUIParentOnKeyDown = UIParent:GetScript("OnKeyDown")
 end
-
 UIParent:SetScript("OnKeyDown", function(self, key)
     if key == "ESCAPE" and NSAukFrame and NSAukFrame:IsShown() and
         not ChatFrameEditBox:IsVisible() and not IsChatFrameFocused() then
@@ -253,11 +184,9 @@ function NSAukClass.new()
     self.maxGoldBox = nil
     self.maxSilverBox = nil
     self.maxCopperBox = nil
-    -- Тип игрока (ХК/ХК+/Обычный)
     self.playerType = nil
     self.playerDebuff = nil
     self.playerPrefix = ""
-
     self:CreateUI()
     self:RegisterChatHandler()
 
@@ -283,7 +212,6 @@ function NSAukClass:CheckPlayerDebuffs()
     self.playerType = nil
     self.playerDebuff = nil
     self.playerPrefix = ""
-
     for i = 1, 40 do
         local debuffName = UnitDebuff("player", i)
         if not debuffName then break end
@@ -305,7 +233,7 @@ function NSAukClass:CheckPlayerDebuffs()
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00NSAuk: Тип игрока определён: " .. self.playerType .. " (" .. self.playerDebuff .. ")|r")
     else
         self.playerType = "Обычный"
-        self.playerPrefix = " "
+        self.playerPrefix = ""
         DEFAULT_CHAT_FRAME:AddMessage("|cffff0000NSAuk: ВНИМАНИЕ! Не найден дебаф ХК/ХК+. Вы обычный игрок.|r")
     end
 
@@ -402,8 +330,7 @@ function NSAukClass:OnItemDrop(frame)
         local itemID = arg1
         local itemLink = nil
         local fullName = nil
-
-        -- Ищем предмет в сумках через GetContainerItemLink (даёт полное имя с суффиксом)
+        -- Ищем предмет в сумках через GetContainerItemLink
         for bag = 0, 4 do
             for slot = 1, GetContainerNumSlots(bag) do
                 local slotLink = GetContainerItemLink(bag, slot)
@@ -449,8 +376,8 @@ function NSAukClass:OnItemDrop(frame)
         end
     end
 
-    frame.texture:SetTexture(" ")
-    frame.itemInfo:SetText(" ")
+    frame.texture:SetTexture("")
+    frame.itemInfo:SetText("")
     frame.itemLink = nil
     frame.itemID = nil
     frame.itemType = nil
@@ -604,7 +531,7 @@ function NSAukClass:CreateUI()
     filtersFrame:SetPoint("TOPLEFT", searchEdit, "BOTTOMLEFT", -3, -8)
 
     local levelLabel = filtersFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    levelLabel:SetText("Уровень:  ")
+    levelLabel:SetText("Уровень:   ")
     levelLabel:SetPoint("LEFT", filtersFrame, "LEFT", 0, 0)
 
     local minLevelBox = CreateFrame("EditBox", "minLevelBox", filtersFrame)
@@ -621,7 +548,7 @@ function NSAukClass:CreateUI()
     minLevelBox:SetFont("Fonts\\FRIZQT__.TTF", 11)
     minLevelBox:SetTextInsets(3, 3, 2, 2)
     minLevelBox:SetAutoFocus(false)
-    minLevelBox:SetText(" ")
+    minLevelBox:SetText("")
     minLevelBox:SetNumeric(true)
     minLevelBox:SetMaxLetters(3)
     minLevelBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
@@ -645,14 +572,14 @@ function NSAukClass:CreateUI()
     maxLevelBox:SetFont("Fonts\\FRIZQT__.TTF", 11)
     maxLevelBox:SetTextInsets(3, 3, 2, 2)
     maxLevelBox:SetAutoFocus(false)
-    maxLevelBox:SetText(" ")
+    maxLevelBox:SetText("")
     maxLevelBox:SetNumeric(true)
     maxLevelBox:SetMaxLetters(3)
     maxLevelBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     self.maxLevelBox = maxLevelBox
 
     local qualityLabel = filtersFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    qualityLabel:SetText("Качество:  ")
+    qualityLabel:SetText("Качество:   ")
     qualityLabel:SetPoint("LEFT", maxLevelBox, "RIGHT", 10, 0)
 
     local qualityDropdown = CreateFrame("Frame", "qualityDropdown", filtersFrame, "UIDropDownMenuTemplate")
@@ -693,7 +620,7 @@ function NSAukClass:CreateUI()
     self.selectedQualityText = "Все"
 
     local priceLabel = filtersFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    priceLabel:SetText("Цена до:  ")
+    priceLabel:SetText("Цена до:   ")
     priceLabel:SetPoint("LEFT", qualityDropdown, "RIGHT", 0, 0)
 
     local maxGoldBox = CreateFrame("EditBox", "maxGoldBox", filtersFrame)
@@ -774,7 +701,7 @@ function NSAukClass:CreateUI()
     local pageButton = CreateFrame("Button", "pageButton", buyPanel, "UIPanelButtonTemplate")
     pageButton:SetSize(60, 22)
     pageButton:SetPoint("LEFT", findBtn, "RIGHT", 6, 0)
-    pageButton:SetText("  >  > 2")
+    pageButton:SetText("   >   > 2")
     pageButton.owner = self
     pageButton:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
@@ -798,7 +725,7 @@ function NSAukClass:CreateUI()
         EnsureAuctionChannel(function(chanID)
             if chanID then
                 local cmd = owner:GetCommandPrefix(owner.searchMode == "online" and "КПОН" or "КПН")
-                SendChatMessage(cmd .. "  " .. pageNum .. "  " .. owner.lastSearchQuery, "CHANNEL", nil, chanID)
+                SendChatMessage(cmd .. "   " .. pageNum .. "   " .. owner.lastSearchQuery, "CHANNEL", nil, chanID)
             else
                 DEFAULT_CHAT_FRAME:AddMessage("|cffff0000NSAuk: Не удалось подключиться к каналу 'Аукцион'.|r")
             end
@@ -824,7 +751,7 @@ function NSAukClass:CreateUI()
         EnsureAuctionChannel(function(chanID)
             if chanID then
                 local cmd = owner:GetCommandPrefix("КП")
-                SendChatMessage(cmd .. "  " .. owner.lastSearchQuery, "CHANNEL", nil, chanID)
+                SendChatMessage(cmd .. "   " .. owner.lastSearchQuery, "CHANNEL", nil, chanID)
             else
                 DEFAULT_CHAT_FRAME:AddMessage("|cffff0000NSAuk: Не удалось подключиться к каналу 'Аукцион'.|r")
             end
@@ -940,7 +867,7 @@ function NSAukClass:CreateUI()
     sellPanel:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -10, 10)
     sellPanel:Hide()
     local dropLabel = sellPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    dropLabel:SetText("Перетащите предмет для продажи:  ")
+    dropLabel:SetText("Перетащите предмет для продажи:   ")
     dropLabel:SetPoint("TOPLEFT", sellPanel, "TOPLEFT", 10, -10)
     local itemFrame = CreateFrame("Button", nil, sellPanel)
     itemFrame:SetSize(64, 64)
@@ -969,13 +896,13 @@ function NSAukClass:CreateUI()
     itemInfo:SetWidth(580)
     itemInfo:SetJustifyH("LEFT")
     itemInfo:SetJustifyV("TOP")
-    itemInfo:SetText(" ")
+    itemInfo:SetText("")
     itemInfo:SetTextColor(1, 1, 1)
     itemInfo:SetFont("Fonts\\FRIZQT__.TTF", 11)
     itemFrame.itemInfo = itemInfo
 
     local quantityLabel = sellPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    quantityLabel:SetText("Количество:  ")
+    quantityLabel:SetText("Количество:   ")
     quantityLabel:SetPoint("TOPLEFT", itemFrame, "BOTTOMLEFT", 0, -25)
     local quantityBox = CreateFrame("EditBox", nil, sellPanel)
     quantityBox:SetSize(60, 20)
@@ -998,7 +925,7 @@ function NSAukClass:CreateUI()
     self.quantityBox = quantityBox
 
     local priceLabel = sellPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    priceLabel:SetText("Цена за шт:  ")
+    priceLabel:SetText("Цена за шт:   ")
     priceLabel:SetPoint("TOPLEFT", quantityLabel, "BOTTOMLEFT", 0, -15)
     local goldBox = CreateFrame("EditBox", nil, sellPanel)
     goldBox:SetSize(45, 20)
@@ -1131,7 +1058,7 @@ function NSAukClass:CreateUI()
     closeBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -5, -5)
     closeBtn:SetScript("OnClick", function() frame:Hide() end)
 
-    local helpBtn = CreateFrame("Button", nil, frame, " ")
+    local helpBtn = CreateFrame("Button", nil, frame, "")
     helpBtn:SetSize(22, 22)
     helpBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -32, -6)
 
@@ -1144,33 +1071,33 @@ function NSAukClass:CreateUI()
         helpText:SetTextColor(1, 1, 0.7)
         GameTooltip:SetOwner(self, "ANCHOR_TOPRIGHT")
         GameTooltip:SetText("Справка по аукциону", 1, 0.82, 0, true)
-        GameTooltip:AddLine("", 1, 1, 1)
-        GameTooltip:AddLine("Поиск предметов:", 0.5, 1, 0.5, true)
-        GameTooltip:AddLine("• Введите название и нажмите 'Найти'", 1, 1, 1)
-        GameTooltip:AddLine("• Или выберите раздел слева", 1, 1, 1)
-        GameTooltip:AddLine("", 1, 1, 1)
-        GameTooltip:AddLine("Фильтры поиска:", 0.5, 1, 0.5, true)
-        GameTooltip:AddLine("• Уровень: укажите мин/макс уровень предмета", 1, 1, 1)
-        GameTooltip:AddLine("• Качество: выберите редкость предмета", 1, 1, 1)
-        GameTooltip:AddLine("• Цена до: макс. цена в з/с/м", 1, 1, 1)
-        GameTooltip:AddLine("", 1, 1, 1)
-        GameTooltip:AddLine("Режимы поиска:", 0.5, 1, 0.5, true)
-        GameTooltip:AddLine("• Онлайн: только активные игроки (зелёный ник)", 0.2, 1, 0.2)
-        GameTooltip:AddLine("• Офлайн: все игроки (красный ник)", 1, 0.2, 0.2)
-        GameTooltip:AddLine("", 1, 1, 1)
-        GameTooltip:AddLine("Покупка:", 0.5, 1, 0.5, true)
-        GameTooltip:AddLine("Кликните по нику продавца - отправится предложение", 1, 1, 1)
-        GameTooltip:AddLine("", 1, 1, 1)
-        GameTooltip:AddLine("Продажа:", 0.5, 1, 0.5, true)
-        GameTooltip:AddLine("Перетащите предмет - укажите цену - 'Продать'", 1, 1, 1)
-        GameTooltip:AddLine("", 1, 1, 1)
-        GameTooltip:AddLine("Мои лоты:", 0.5, 1, 0.5, true)
-        GameTooltip:AddLine("Вкладка 'Мои лоты' - удаление кликом", 1, 1, 1)
-        GameTooltip:AddLine( "  ", 1, 1, 1)
-        GameTooltip:AddLine( "Гильдбанк:  ", 0.5, 1, 0.5, true)
-        GameTooltip:AddLine( "• 1 предмет в сутки (гильдчат + аддон)  ", 1, 1, 1)
-        GameTooltip:AddLine( "• Лимиты: зелья 5, ресурсы 50, символы 1  ", 1, 1, 1)
-        GameTooltip:AddLine( "• Превышение: внеси равную сумму  ", 1, 1, 1)
+        GameTooltip:AddLine(" ", 1, 1, 1)
+        GameTooltip:AddLine("Поиск предметов: ", 0.5, 1, 0.5, true)
+        GameTooltip:AddLine("• Введите название и нажмите 'Найти' ", 1, 1, 1)
+        GameTooltip:AddLine("• Или выберите раздел слева ", 1, 1, 1)
+        GameTooltip:AddLine(" ", 1, 1, 1)
+        GameTooltip:AddLine("Фильтры поиска: ", 0.5, 1, 0.5, true)
+        GameTooltip:AddLine("• Уровень: укажите мин/макс уровень предмета ", 1, 1, 1)
+        GameTooltip:AddLine("• Качество: выберите редкость предмета ", 1, 1, 1)
+        GameTooltip:AddLine("• Цена до: макс. цена в з/с/м ", 1, 1, 1)
+        GameTooltip:AddLine(" ", 1, 1, 1)
+        GameTooltip:AddLine("Режимы поиска: ", 0.5, 1, 0.5, true)
+        GameTooltip:AddLine("• Онлайн: только активные игроки (зелёный ник) ", 0.2, 1, 0.2)
+        GameTooltip:AddLine("• Офлайн: все игроки (красный ник) ", 1, 0.2, 0.2)
+        GameTooltip:AddLine(" ", 1, 1, 1)
+        GameTooltip:AddLine("Покупка: ", 0.5, 1, 0.5, true)
+        GameTooltip:AddLine("Кликните по нику продавца - отправится предложение ", 1, 1, 1)
+        GameTooltip:AddLine(" ", 1, 1, 1)
+        GameTooltip:AddLine("Продажа: ", 0.5, 1, 0.5, true)
+        GameTooltip:AddLine("Перетащите предмет - укажите цену - 'Продать' ", 1, 1, 1)
+        GameTooltip:AddLine(" ", 1, 1, 1)
+        GameTooltip:AddLine("Мои лоты: ", 0.5, 1, 0.5, true)
+        GameTooltip:AddLine("Вкладка 'Мои лоты' - удаление кликом ", 1, 1, 1)
+        GameTooltip:AddLine("   ", 1, 1, 1)
+        GameTooltip:AddLine("Гильдбанк:   ", 0.5, 1, 0.5, true)
+        GameTooltip:AddLine("• 1 предмет в сутки (гильдчат + аддон)   ", 1, 1, 1)
+        GameTooltip:AddLine("• Лимиты: зелья 5, ресурсы 50, символы 1   ", 1, 1, 1)
+        GameTooltip:AddLine("• Превышение: внеси равную сумму   ", 1, 1, 1)
         GameTooltip:Show()
     end)
     helpBtn:SetScript("OnLeave", function(self)
@@ -1226,7 +1153,6 @@ function NSAukClass:CreateMyLotsTab()
     end)
     searchEdit.owner = self
     self.lotsSearchBox = searchEdit
-
     local hint = lotsPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     hint:SetPoint("TOPLEFT", searchEdit, "BOTTOMLEFT", 0, -5)
     hint:SetText("Поиск по названию, типу или подтипу предмета")
@@ -1289,7 +1215,6 @@ function NSAukClass:RefreshMyLots(filterText)
     if not self.lotsResultsList then return end
     local children = { self.lotsResultsList:GetChildren() }
     for _, child in ipairs(children) do child:Hide() end
-
     NSAuk = NSAuk or {}
     NSAuk.items = NSAuk.items or {}
     local items = NSAuk.items
@@ -1297,7 +1222,7 @@ function NSAukClass:RefreshMyLots(filterText)
 
     local filterLower = filterText:lower():gsub("^%s*(.-)%s*$", "%1")
     for name, lot in pairs(items) do
-        if filterLower == " " or
+        if filterLower == "" or
             name:lower():find(filterLower, 1, true) or
             (lot.itemType and lot.itemType:lower():find(filterLower, 1, true)) or
             (lot.itemSubType and lot.itemSubType:lower():find(filterLower, 1, true)) then
@@ -1406,13 +1331,12 @@ function NSAukClass:DeleteMyLot(itemName)
     NSAuk = NSAuk or {}
     NSAuk.items = NSAuk.items or {}
     if not NSAuk.items[itemName] then return end
-
     NSAuk.items[itemName] = nil
 
     EnsureAuctionChannel(function(chanID)
         if chanID then
             local deletePrefix = self:GetCommandPrefix("ДЛ")
-            SendChatMessage(deletePrefix .. "  " .. itemName, "CHANNEL", nil, chanID)
+            SendChatMessage(deletePrefix .. "   " .. itemName, "CHANNEL", nil, chanID)
             DEFAULT_CHAT_FRAME:AddMessage(string.format("|cff00ff00NSAuk: Лот удалён: %s|r", itemName))
         end
     end)
@@ -1464,7 +1388,6 @@ function NSAukClass:CreateMinimapButton()
             end
         end
     end)
-
     local function UpdatePosition(self)
         local cursorX, cursorY = GetCursorPosition()
         local minimapX, minimapY = Minimap:GetCenter()
@@ -1495,7 +1418,7 @@ function NSAukClass:CreateMinimapButton()
     button:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_CURSOR")
         GameTooltip:SetText('От "Ночной стражи":', 1, 1, 1)
-        GameTooltip:AddLine('Аукцион 3.0.1"', 1, 1, 1)
+        GameTooltip:AddLine('Аукцион 3.0.2"', 1, 1, 1)
         GameTooltip:AddLine('Гильдбанк 5.2"', 1, 1, 1)
         GameTooltip:AddLine('Отображение смертей хк 6.0.2"', 1, 1, 1)
         GameTooltip:AddLine(' ', 1, 1, 1)
@@ -1591,7 +1514,6 @@ function NSAukClass:AddResult(seller, buyer, quantity, pricePerItem, itemName, i
         end
     end
     -- === ФИЛЬТР ПО ТИПУ ИГРОКА ===
-    -- Игрок видит только лоты от игроков своего типа
     if sellerType and self.playerType and sellerType ~= self.playerType then
         return
     end
@@ -1640,6 +1562,7 @@ function NSAukClass:AddResult(seller, buyer, quantity, pricePerItem, itemName, i
     ownerText:SetText(seller)
     ownerText:SetFont("Fonts\\FRIZQT__.TTF", 11, "OUTLINE")
 
+    -- Цвет ника: Зеленый (Онлайн), Красный (Офлайн)
     if isOffline then
         ownerText:SetTextColor(1, 0.2, 0.2)
     else
@@ -1650,11 +1573,11 @@ function NSAukClass:AddResult(seller, buyer, quantity, pricePerItem, itemName, i
         if isOffline then
             ownerText:SetTextColor(1, 0.5, 0.5)
             GameTooltip:SetOwner(ownerButton, "ANCHOR_RIGHT")
-            GameTooltip:SetText("Ожидает подтверждения продавца", 1, 0.5, 0.5)
+            GameTooltip:SetText("Ожидает подтверждения продавца (Офлайн)", 1, 0.5, 0.5)
         else
             ownerText:SetTextColor(0.5, 1, 0.5)
             GameTooltip:SetOwner(ownerButton, "ANCHOR_RIGHT")
-            GameTooltip:SetText("Кликните для предложения покупки", 0.5, 1, 0.5)
+            GameTooltip:SetText("Кликните для предложения покупки (Онлайн)", 0.5, 1, 0.5)
         end
         GameTooltip:Show()
     end)
@@ -1671,6 +1594,8 @@ function NSAukClass:AddResult(seller, buyer, quantity, pricePerItem, itemName, i
             local message = string.format("Хочу купить: %s (%s шт) за %s. Договоримся?", itemName, quantity, totalPriceStr)
             SendChatMessage(message, "WHISPER", nil, seller)
             DEFAULT_CHAT_FRAME:AddMessage(string.format("|cff00ff00NSAuk: Предложение отправлено игроку %s|r", seller))
+        else
+            DEFAULT_CHAT_FRAME:AddMessage("|cffffff00NSAuk: Игрок офлайн. Оставьте заявку в ЛС или попробуйте позже.|r")
         end
     end)
 
@@ -1755,19 +1680,11 @@ function NSAukClass:AddResult(seller, buyer, quantity, pricePerItem, itemName, i
 
     resultFrame:SetPoint("TOPLEFT", self.resultsList, "TOPLEFT", 0, -((index - 1) * 24))
     table.insert(self.results, {
-        frame = resultFrame,
-        ownerButton = ownerButton,
-        ownerText = ownerText,
-        itemButton = itemButton,
-        itemText = itemText,
-        seller = seller,
-        buyer = buyer,
-        itemName = itemName,
-        quantity = quantity,
-        pricePerItem = pricePerItem,
-        itemID = itemID,
-        isOffline = isOffline,
-        sellerType = sellerType
+        frame = resultFrame, ownerButton = ownerButton, ownerText = ownerText,
+        itemButton = itemButton, itemText = itemText, seller = seller,
+        buyer = buyer, itemName = itemName, quantity = quantity,
+        pricePerItem = pricePerItem, itemID = itemID,
+        isOffline = isOffline, sellerType = sellerType
     })
 
     self.resultsList:SetHeight(#self.results * 24)
@@ -1775,7 +1692,7 @@ function NSAukClass:AddResult(seller, buyer, quantity, pricePerItem, itemName, i
 
     if #self.results >= 10 and self.lastSearchQuery and not self.pageButton:IsShown() then
         self.currentPage = self.currentPage + 1
-        self.pageButton:SetText("  >  >  " .. self.currentPage)
+        self.pageButton:SetText("   >   >   " .. self.currentPage)
         self.pageButton:Show()
     end
 end
@@ -1783,15 +1700,14 @@ end
 function NSAukClass:StartSearch()
     if self.findButtonCooldown then return end
     local query = self.searchBox:GetText():gsub("^%s*(.-)%s*$", "%1")
-
-    if query == " " or #query < 6 then
+    if query == "" or #query < 6 then
         DEFAULT_CHAT_FRAME:AddMessage("|cffff0000NSAuk: Минимальная длина поискового запроса — 6 символов.|r")
         return
     end
 
     local minLevelText = self.minLevelBox:GetText():gsub("^%s*(.-)%s*$", "%1")
     local maxLevelText = self.maxLevelBox:GetText():gsub("^%s*(.-)%s*$", "%1")
-    local hasLevelFilter = (minLevelText ~= " " or maxLevelText ~= " ")
+    local hasLevelFilter = (minLevelText ~= "" or maxLevelText ~= "")
     local qualityValue = self.selectedQuality
     local hasQualityFilter = (qualityValue >= 0)
 
@@ -1805,8 +1721,8 @@ function NSAukClass:StartSearch()
     local filters = {}
 
     if hasLevelFilter or hasQualityFilter then
-        local minLvl = (minLevelText ~= " ") and tonumber(minLevelText) or 1
-        local maxLvl = (maxLevelText ~= " ") and tonumber(maxLevelText) or 100
+        local minLvl = (minLevelText ~= "") and tonumber(minLevelText) or 1
+        local maxLvl = (maxLevelText ~= "") and tonumber(maxLevelText) or 100
 
         if hasLevelFilter and hasQualityFilter then
             table.insert(filters, string.format("[%d %d %d]", minLvl, maxLvl, qualityValue))
@@ -1822,11 +1738,13 @@ function NSAukClass:StartSearch()
     end
 
     if #filters > 0 then
-        searchQuery = query .. "  " .. table.concat(filters, "  ")
+        searchQuery = query .. "   " .. table.concat(filters, "   ")
     end
 
     self:ClearResults()
     if self.pageButton then self.pageButton:Hide() end
+    if self.offlineButton then self.offlineButton:Hide() end -- Скрываем кнопку офлайн сразу
+
     self.lastSearchQuery = searchQuery
     self.currentPage = 1
     self.searchMode = "online"
@@ -1839,7 +1757,7 @@ function NSAukClass:StartSearch()
     self.findBtn:Disable()
     self.cooldownFrame:Show()
     self.findBtn:SetText("Найти (25)")
-    self.searchBox:SetText(" ")
+    self.searchBox:SetText("")
 
     for _, btnData in ipairs(self.categoryButtons) do
         if btnData.button and not btnData.button.isSection then
@@ -1850,7 +1768,7 @@ function NSAukClass:StartSearch()
     EnsureAuctionChannel(function(chanID)
         if chanID then
             local cmd = self:GetCommandPrefix("КПО")
-            SendChatMessage(cmd .. "  " .. searchQuery, "CHANNEL", nil, chanID)
+            SendChatMessage(cmd .. "   " .. searchQuery, "CHANNEL", nil, chanID)
         else
             DEFAULT_CHAT_FRAME:AddMessage("|cffff0000NSAuk: Не удалось подключиться к каналу 'Аукцион'.|r")
         end
@@ -1866,7 +1784,6 @@ function NSAukClass:OnSell()
         DEFAULT_CHAT_FRAME:AddMessage("|cffff0000NSAuk: Нет предмета для продажи!|r")
         return
     end
-
     local quantity = tonumber(self.quantityBox:GetText()) or 1
     if quantity < 1 then quantity = 1 end
 
@@ -1877,11 +1794,11 @@ function NSAukClass:OnSell()
     if copper > 99 then copper = 99 end
 
     local itemName = self.sellItemFrame.itemName
-    if not itemName or itemName == " " then
+    if not itemName or itemName == "" then
         itemName = itemLink:match("%[(.-)%]")
     end
 
-    if not itemName or itemName == " " then
+    if not itemName or itemName == "" then
         DEFAULT_CHAT_FRAME:AddMessage("|cffff0000NSAuk: Не удалось извлечь название предмета!|r")
         return
     end
@@ -1893,11 +1810,11 @@ function NSAukClass:OnSell()
     quality = quality or tonumber(self.sellItemFrame.quality) or 0
     itemLevel = itemLevel or 0
 
-    local priceStr = " "
+    local priceStr = ""
     if gold > 0 then priceStr = priceStr .. gold .. "з" end
     if silver > 0 then priceStr = priceStr .. silver .. "с" end
     if copper > 0 then priceStr = priceStr .. copper .. "м" end
-    if priceStr == " " then priceStr = "0м" end
+    if priceStr == "" then priceStr = "0м" end
 
     NSAuk.items[itemName] = {
         quantity = quantity,
@@ -1921,8 +1838,8 @@ function NSAukClass:OnSell()
                 sellPrefix, quantity, priceStr, itemType, itemSubType, quality, itemLevel, itemID, itemName)
             SendChatMessage(message, "CHANNEL", nil, chanID)
 
-            self.sellItemFrame.texture:SetTexture(" ")
-            self.sellItemFrame.itemInfo:SetText(" ")
+            self.sellItemFrame.texture:SetTexture("")
+            self.sellItemFrame.itemInfo:SetText("")
             self.sellItemFrame.itemLink = nil
             self.sellItemFrame.itemID = nil
             self.sellItemFrame.itemType = nil
@@ -1951,13 +1868,12 @@ function NSAukClass:OnDelete()
         DEFAULT_CHAT_FRAME:AddMessage("|cffff0000NSAuk: Нет предмета для удаления!|r")
         return
     end
-
     local itemName = self.sellItemFrame.itemName
     if not itemName then
         itemName = itemLink:match("%[(.-)%]")
     end
 
-    if not itemName or itemName == " " then
+    if not itemName or itemName == "" then
         DEFAULT_CHAT_FRAME:AddMessage("|cffff0000NSAuk: Не удалось извлечь название предмета!|r")
         return
     end
@@ -1967,12 +1883,12 @@ function NSAukClass:OnDelete()
     EnsureAuctionChannel(function(chanID)
         if chanID then
             local deletePrefix = self:GetCommandPrefix("ДЛ")
-            SendChatMessage(deletePrefix .. "  " .. itemName, "CHANNEL", nil, chanID)
-            self.sellItemFrame.texture:SetTexture(" ")
-            self.sellItemFrame.itemInfo:SetText(" ")
+            SendChatMessage(deletePrefix .. "   " .. itemName, "CHANNEL", nil, chanID)
+            self.sellItemFrame.texture:SetTexture("")
+            self.sellItemFrame.itemInfo:SetText("")
             self.sellItemFrame.itemLink = nil
             self.sellItemFrame.itemName = nil
-            DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00NSAuk: Лот удалён:  " .. itemName .. "|r")
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00NSAuk: Лот удалён:   " .. itemName .. "|r")
         else
             DEFAULT_CHAT_FRAME:AddMessage("|cffff0000NSAuk: Не удалось подключиться к каналу 'Аукцион'.|r")
         end
@@ -1998,7 +1914,6 @@ function NSAukClass:UpdateCategories()
     wipe(self.categoryButtons)
     local yPos = 0
     local index = 1
-
     for sectionName, subsections in pairs(NSAukRazdely) do
         local isExpanded = self.expandedCategories[sectionName] == true
         local sectionFrame = CreateFrame("Frame", nil, self.categoriesList)
@@ -2020,7 +1935,7 @@ function NSAukClass:UpdateCategories()
 
         local arrowText = sectionButton:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         arrowText:SetPoint("RIGHT", sectionFrame, "RIGHT", -8, 0)
-        arrowText:SetText(isExpanded and " " or " ")
+        arrowText:SetText(isExpanded and "" or "")
         arrowText:SetFont("Fonts\\FRIZQT__.TTF", 14, "OUTLINE")
         arrowText:SetTextColor(0.7, 0.7, 0.7)
         sectionButton.arrowText = arrowText
@@ -2118,10 +2033,9 @@ function NSAukClass:SearchByCategory(categoryName)
     self.pendingSearchItem = nil
     if self.pageButton then self.pageButton:Hide() end
     if self.offlineButton then self.offlineButton:Hide() end
-
     local minLevelText = self.minLevelBox:GetText():gsub("^%s*(.-)%s*$", "%1")
     local maxLevelText = self.maxLevelBox:GetText():gsub("^%s*(.-)%s*$", "%1")
-    local hasLevelFilter = (minLevelText ~= " " or maxLevelText ~= " ")
+    local hasLevelFilter = (minLevelText ~= "" or maxLevelText ~= "")
     local qualityValue = self.selectedQuality
     local hasQualityFilter = (qualityValue >= 0)
 
@@ -2135,8 +2049,8 @@ function NSAukClass:SearchByCategory(categoryName)
     local filters = {}
 
     if hasLevelFilter or hasQualityFilter then
-        local minLvl = (minLevelText ~= " ") and tonumber(minLevelText) or 1
-        local maxLvl = (maxLevelText ~= " ") and tonumber(maxLevelText) or 100
+        local minLvl = (minLevelText ~= "") and tonumber(minLevelText) or 1
+        local maxLvl = (maxLevelText ~= "") and tonumber(maxLevelText) or 100
 
         if hasLevelFilter and hasQualityFilter then
             table.insert(filters, string.format("[%d %d %d]", minLvl, maxLvl, qualityValue))
@@ -2152,7 +2066,7 @@ function NSAukClass:SearchByCategory(categoryName)
     end
 
     if #filters > 0 then
-        searchQuery = categoryName .. "  " .. table.concat(filters, "  ")
+        searchQuery = categoryName .. "   " .. table.concat(filters, "   ")
     end
 
     self.lastSearchQuery = searchQuery
@@ -2177,7 +2091,7 @@ function NSAukClass:SearchByCategory(categoryName)
     EnsureAuctionChannel(function(chanID)
         if chanID then
             local cmd = self:GetCommandPrefix("КПО")
-            SendChatMessage(cmd .. "  " .. searchQuery, "CHANNEL", nil, chanID)
+            SendChatMessage(cmd .. "   " .. searchQuery, "CHANNEL", nil, chanID)
         else
             DEFAULT_CHAT_FRAME:AddMessage("|cffff0000NSAuk: Не удалось подключиться к каналу 'Аукцион'.|r")
         end
@@ -2200,21 +2114,20 @@ function NSAukClass:RegisterChatHandler()
         NSAuk.items = NSAuk.items or {}
 
         local function normalize(name)
-            if not name then return " " end
+            if not name then return "" end
             local base = name:match("^([^%-]+)") or name
             return base:lower()
         end
 
         local playerBase = normalize(playerName)
 
-        -- === ОБРАБОТКА ОТВЕТОВ Т?/Т?-/Т?~ (офлайн) ===
+        -- === ОБРАБОТКА ОТВЕТОВ Т? (офлайн - ОТ СЕРВЕРА) ===
         local responseType, responsePrefix, seller, buyer, quantity, price, itemID, itemName = message:match("^%s*(Т%?)([-~]?)%s+(%S+)%s+(%S+)%s+(%d+)%s+(%S+)%s+(%d+)%s+(.+)$")
         if responseType and seller and buyer and quantity and price and itemID and itemName then
             local sellerBase = normalize(seller)
             local buyerBase = normalize(buyer)
             local numericItemID = tonumber(itemID)
 
-            -- Определяем тип продавца по префиксу ответа
             local sellerType = "Обычный"
             if responsePrefix == "-" then
                 sellerType = "HK"
@@ -2239,13 +2152,12 @@ function NSAukClass:RegisterChatHandler()
             return
         end
 
-        -- === ОБРАБОТКА ОТВЕТОВ Т!/Т!-/Т!~ (онлайн) ===
+        -- === ОБРАБОТКА ОТВЕТОВ Т! (онлайн - ОТ КЛИЕНТА) ===
         local responseType2, responsePrefix2, seller2, buyer2, quantity2, pricePerItem, itemID2, itemName2 = message:match("^%s*(Т!)([-~]?)%s+(%S+)%s+(%S+)%s+(%d+)%s+(%S+)%s+(%d+)%s+(.+)$")
         if responseType2 and seller2 and buyer2 and quantity2 and pricePerItem and itemID2 and itemName2 then
             local buyerBase2 = normalize(buyer2)
             local numericItemID2 = tonumber(itemID2)
 
-            -- Определяем тип продавца по префиксу ответа
             local sellerType2 = "Обычный"
             if responsePrefix2 == "-" then
                 sellerType2 = "HK"
@@ -2259,7 +2171,7 @@ function NSAukClass:RegisterChatHandler()
             return
         end
 
-        -- === ОБРАБОТКА КОМАНД ПР/ПР-/ПР~ (продажа) ===
+        -- === ОБРАБОТКА КОМАНД ПР (продажа) ===
         local function ParseSellCommand(commandStr)
             local prefix, rest = commandStr:match("^%s*(ПР)([-~]?)%s+(.+)$")
             if not prefix then return nil end
@@ -2275,7 +2187,7 @@ function NSAukClass:RegisterChatHandler()
             local quality = tonumber(words[5])
             local itemLevel = tonumber(words[6])
             local itemID = tonumber(words[7])
-            local itemName = table.concat(words, "  ", 8)
+            local itemName = table.concat(words, " ", 8)
 
             local sellerType = "Обычный"
             if fullPrefix == "ПР-" then
@@ -2304,7 +2216,7 @@ function NSAukClass:RegisterChatHandler()
             if data then
                 NSAuk.items[data.itemName] = {
                     quantity = data.quantity,
-                    gold = ParsePrice(data.priceStr),
+                    gold = select(1, ParsePrice(data.priceStr)),
                     silver = select(2, ParsePrice(data.priceStr)),
                     copper = select(3, ParsePrice(data.priceStr)),
                     priceStr = data.priceStr,
@@ -2320,20 +2232,21 @@ function NSAukClass:RegisterChatHandler()
             return
         end
 
-        -- === ОБРАБОТКА КОМАНД ДЛ/ДЛ-/ДЛ~ (удаление) ===
+        -- === ОБРАБОТКА КОМАНД ДЛ (удаление) ===
         local dlPrefix, dlSuffix, dlItemName = message:match("^%s*(ДЛ)([-~]?)%s+(.+)$")
         if dlPrefix and dlItemName then
             NSAuk.items[dlItemName] = nil
             return
         end
 
-        -- === ОБРАБОТКА КОМАНД КПО/КПО-/КПО~/КПОН/КПОН-/КПОН~/КП/КП-/КП~ (запросы поиска) ===
+        -- === ПОИСК ПРЕДМЕТОВ (ОТВЕТ НА КПО) ===
         local function FindMatchingItems(searchQuery, minLevel, maxLevel, quality, minPrice, maxPrice, requesterType)
             local matchingItems = {}
+            local seenItems = {}
+
             for itemName, lot in pairs(NSAuk.items) do
-                -- === ФИЛЬТР ПО ТИПУ ИГРОКА ===
                 if requesterType and lot.sellerType and lot.sellerType ~= requesterType then
-                    -- Игрок видит только лоты своего типа
+                    -- Пропускаем лоты другого типа
                 else
                     local matches = false
                     if itemName:lower():find(searchQuery, 1, true) or
@@ -2358,7 +2271,8 @@ function NSAukClass:RegisterChatHandler()
                         end
                     end
 
-                    if matches then
+                    if matches and not seenItems[itemName] then
+                        seenItems[itemName] = true
                         table.insert(matchingItems, {
                             name = itemName,
                             lot = lot,
@@ -2388,12 +2302,12 @@ function NSAukClass:RegisterChatHandler()
                 end
             end
 
-            local searchQuery = table.concat(searchWords, "  "):lower()
+            local searchQuery = table.concat(searchWords, " "):lower()
             local minLevel, maxLevel, quality = nil, nil, -1
             local minPrice, maxPrice = nil, nil
 
             if filterStartIndex then
-                local filterStr = table.concat(words, "  ", filterStartIndex)
+                local filterStr = table.concat(words, " ", filterStartIndex)
                 local squareFilter = filterStr:match("%[(.-)%]")
                 if squareFilter then
                     local parts = mysplit(squareFilter)
@@ -2412,7 +2326,6 @@ function NSAukClass:RegisterChatHandler()
             return searchQuery, minLevel, maxLevel, quality, minPrice, maxPrice
         end
 
-        -- Определяем тип игрока, сделавшего запрос (ИСПРАВЛЕНО)
         local function GetRequesterType(msg, baseCmd)
             local prefix, suffix = msg:match("^%s*(" .. baseCmd .. ")([-~]?)")
             if suffix == "-" then
@@ -2423,118 +2336,51 @@ function NSAukClass:RegisterChatHandler()
             return "Обычный"
         end
 
-        -- === КПО / КПО- / КПО~ ===
+        local function ScheduleResponse(responseType, playerName, author, lot, itemName, delayIndex)
+            local delayFrame = CreateFrame("Frame")
+            delayFrame.delay = 2 * delayIndex
+            delayFrame.responseType = responseType
+            delayFrame.playerName = playerName
+            delayFrame.author = author
+            delayFrame.lot = lot
+            delayFrame.itemName = itemName
+            delayFrame.elapsed = 0
+            delayFrame:SetScript("OnUpdate", function(self, elapsed)
+                self.elapsed = self.elapsed + elapsed
+                if self.elapsed >= self.delay then
+                    self:SetScript("OnUpdate", nil)
+                    EnsureAuctionChannel(function(chanID)
+                        if chanID then
+                            local prefix = self.owner:GetCommandPrefix(self.responseType)
+                            SendChatMessage(string.format("%s %s %s %d %s %d %s",
+                                prefix, self.playerName, self.author, self.lot.quantity, self.lot.priceStr,
+                                self.lot.itemID, self.itemName),
+                                "CHANNEL", nil, chanID)
+                        end
+                    end)
+                end
+            end)
+            delayFrame.owner = self
+            delayFrame:Show()
+        end
+
+        -- === КПО / КПО- / КПО~ (Онлайн поиск - Клиент отвечает Клиенту) ===
         local kpoCmd, kpoSuffix, kpoRest = message:match("^%s*(КПО)([-~]?)%s+(.+)$")
         if kpoCmd and kpoRest then
+            if normalize(author) == playerBase then return end -- Не отвечаем сами себе
             local requesterType = GetRequesterType(message, "КПО")
             local searchQuery, minLevel, maxLevel, quality, minPrice, maxPrice = ParseCommandWithFilters(kpoRest)
             local matchingItems = FindMatchingItems(searchQuery, minLevel, maxLevel, quality, minPrice, maxPrice, requesterType)
+            -- Отвечаем Т! (Онлайн)
             for i = 1, math.min(10, #matchingItems) do
                 local item = matchingItems[i]
-                local delayFrame = CreateFrame("Frame")
-                delayFrame.delay = 2 * i
-                delayFrame.item = item
-                delayFrame.playerName = playerName
-                delayFrame.author = author
-                delayFrame.elapsed = 0
-                delayFrame:SetScript("OnUpdate", function(self, elapsed)
-                    self.elapsed = self.elapsed + elapsed
-                    if self.elapsed >= self.delay then
-                        self:SetScript("OnUpdate", nil)
-                        EnsureAuctionChannel(function(chanID)
-                            if chanID then
-                                local responsePrefix = self.owner:GetCommandPrefix("Т?")
-                                SendChatMessage(string.format("%s %s %s %d %s %d %s",
-                                    responsePrefix, self.playerName, self.author, self.item.lot.quantity, self.item.lot.priceStr,
-                                    self.item.lot.itemID, self.item.name),
-                                    "CHANNEL", nil, chanID)
-                            end
-                        end)
-                    end
-                end)
-                delayFrame.owner = self
+                ScheduleResponse("Т!", playerName, author, item.lot, item.name, i)
             end
             return
         end
 
-        -- === КПОН / КПОН- / КПОН~ ===
-        local kponCmd, kponSuffix, kponRest = message:match("^%s*(КПОН)([-~]?)%s+(.+)$")
-        if kponCmd and kponRest then
-            local requesterType = GetRequesterType(message, "КПОН")
-            local words = mysplit(kponRest)
-            if #words < 1 then return end
-            local pageNum = tonumber(words[1]) or 1
-            local searchRest = table.concat(words, "  ", 2)
-            local searchQuery, minLevel, maxLevel, quality, minPrice, maxPrice = ParseCommandWithFilters(searchRest)
-            local matchingItems = FindMatchingItems(searchQuery, minLevel, maxLevel, quality, minPrice, maxPrice, requesterType)
-            local itemsPerPage = 10
-            local startIndex = (pageNum - 1) * itemsPerPage + 1
-            local endIndex = math.min(pageNum * itemsPerPage, #matchingItems)
-            local delayCounter = 0
-            for i = startIndex, endIndex do
-                local item = matchingItems[i]
-                if item then
-                    local delayFrame = CreateFrame("Frame")
-                    delayFrame.delay = 2 * delayCounter
-                    delayFrame.item = item
-                    delayFrame.playerName = playerName
-                    delayFrame.author = author
-                    delayFrame.elapsed = 0
-                    delayFrame:SetScript("OnUpdate", function(self, elapsed)
-                        self.elapsed = self.elapsed + elapsed
-                        if self.elapsed >= self.delay then
-                            self:SetScript("OnUpdate", nil)
-                            EnsureAuctionChannel(function(chanID)
-                                if chanID then
-                                    local responsePrefix = self.owner:GetCommandPrefix("Т?")
-                                    SendChatMessage(string.format("%s %s %s %d %s %d %s",
-                                        responsePrefix, self.playerName, self.author, self.item.lot.quantity, self.item.lot.priceStr,
-                                        self.item.lot.itemID, self.item.name),
-                                        "CHANNEL", nil, chanID)
-                                end
-                            end)
-                        end
-                    end)
-                    delayFrame.owner = self
-                    delayCounter = delayCounter + 1
-                end
-            end
-            return
-        end
-
-        -- === КП / КП- / КП~ ===
-        local kpCmd, kpSuffix, kpRest = message:match("^%s*(КП)([-~]?)%s+(.+)$")
-        if kpCmd and kpRest then
-            local requesterType = GetRequesterType(message, "КП")
-            local searchQuery, minLevel, maxLevel, quality, minPrice, maxPrice = ParseCommandWithFilters(kpRest)
-            local matchingItems = FindMatchingItems(searchQuery, minLevel, maxLevel, quality, minPrice, maxPrice, requesterType)
-            for i = 1, math.min(10, #matchingItems) do
-                local item = matchingItems[i]
-                local delayFrame = CreateFrame("Frame")
-                delayFrame.delay = 2 * i
-                delayFrame.item = item
-                delayFrame.playerName = playerName
-                delayFrame.author = author
-                delayFrame.elapsed = 0
-                delayFrame:SetScript("OnUpdate", function(self, elapsed)
-                    self.elapsed = self.elapsed + elapsed
-                    if self.elapsed >= self.delay then
-                        self:SetScript("OnUpdate", nil)
-                        EnsureAuctionChannel(function(chanID)
-                            if chanID then
-                                local responsePrefix = self.owner:GetCommandPrefix("Т?")
-                                SendChatMessage(string.format("%s %s %s %d %s %d %s",
-                                    responsePrefix, self.playerName, self.author, self.item.lot.quantity, self.item.lot.priceStr,
-                                    self.item.lot.itemID, self.item.name),
-                                    "CHANNEL", nil, chanID)
-                            end
-                        end)
-                    end
-                end)
-                delayFrame.owner = self
-            end
-            return
-        end
+        -- === КП / КП- / КП~ (Офлайн поиск - Игнорируем, это делает Сервер) ===
+        -- Клиент не должен отвечать на КП, это задача серверной части.
     end)
 end
 
@@ -2562,7 +2408,6 @@ NSAukAutoJoin:SetScript("OnUpdate", function(self, elapsed)
             break
         end
     end
-
     if not alreadyInChannel then
         JoinChannelByName("Аукцион")
     end
