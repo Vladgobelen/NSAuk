@@ -1,7 +1,8 @@
 -- NSAukGuildBank.lua: Класс гильдбанка для аддона NSAuk (WoW 3.3.5)
--- Версия: 6.2 (Исправлено отображение для ретрансляторов и форматирование)
+-- Версия: 7.0 (Release)
 NSAukGuildBankClass = {}
 NSAukGuildBankClass.__index = NSAukGuildBankClass
+
 local SEND_DELAY = 0.05
 local AUTO_SCAN_DELAY = 0.1
 local SCAN_COOLDOWN = 20
@@ -58,8 +59,8 @@ function NSAukGuildBankClass.new(parentAddon)
     if not NSAukGlobal then NSAukGlobal = {} end
     if not NSAukGlobal.guildBanks then NSAukGlobal.guildBanks = {} end
     if not NSAukGlobal.guildBanksSettings then NSAukGlobal.guildBanksSettings = {} end
-    if not NSAukGlobal['золото'] then NSAukGlobal['золото'] = {} end
-    if not NSAukGlobal['баланс'] then NSAukGlobal['баланс'] = {} end
+    if not NSAukGlobal["золото"] then NSAukGlobal["золото"] = {} end
+    if not NSAukGlobal["баланс"] then NSAukGlobal["баланс"] = {} end
     if not NSAukGlobal.guildBankTimestamps then NSAukGlobal.guildBankTimestamps = {} end
     if not NSAukGlobal.guildBankVersions then NSAukGlobal.guildBankVersions = {} end
 
@@ -283,10 +284,10 @@ function NSAukGuildBankClass:GetItemFullInfo(itemLink)
         itemLevel = iLevel or 0,
         reqLevel = reqLevel or 0,
         class = class or "Разное",
-        subclass = subclass or "",
+        subclass = subclass or " ",
         maxStack = maxStack or 1,
-        equipSlot = equipSlot or "",
-        texture = texture or "",
+        equipSlot = equipSlot or " ",
+        texture = texture or " ",
         sellPrice = sellPrice or 0,
         sellPriceGold = (sellPrice or 0) / 10000
     }
@@ -446,13 +447,12 @@ function NSAukGuildBankClass:OnTradeEvent(event, arg1, arg2, arg3)
             local isGuildBank = frame.owner:IsGuildBankCharacter()
             if partnerName and partnerName ~= "Unknown Entity" and isGuildBank then
                 if not NSAukGlobal then NSAukGlobal = {} end
-                if not NSAukGlobal['баланс'] then NSAukGlobal['баланс'] = {} end
-                if not NSAukGlobal['золото'] then NSAukGlobal['золото'] = {} end
-                NSAukGlobal['баланс'][partnerName] = (NSAukGlobal['баланс'][partnerName] or 0) + itemBalance
-                NSAukGlobal['золото'][partnerName] = (NSAukGlobal['золото'][partnerName] or 0) + moneyDiff
-                local totalBalance = NSAukGlobal['баланс'][partnerName]
-                local totalGold = NSAukGlobal['золото'][partnerName]
-
+                if not NSAukGlobal["баланс"] then NSAukGlobal["баланс"] = {} end
+                if not NSAukGlobal["золото"] then NSAukGlobal["золото"] = {} end
+                NSAukGlobal["баланс"][partnerName] = (NSAukGlobal["баланс"][partnerName] or 0) + itemBalance
+                NSAukGlobal["золото"][partnerName] = (NSAukGlobal["золото"][partnerName] or 0) + moneyDiff
+                local totalBalance = NSAukGlobal["баланс"][partnerName]
+                local totalGold = NSAukGlobal["золото"][partnerName]
                 local itemBalanceStr = string.format("%.2f", itemBalance / 10000)
                 local goldDiffStr = string.format("%.2f", moneyDiff / 10000)
                 local totalBalanceStr = string.format("%.2f", totalBalance / 10000)
@@ -504,14 +504,15 @@ function NSAukGuildBankClass:CreateUI()
     clearBtn:SetText("Очистить")
     clearBtn:SetScript("OnEnter", function(btn)
         GameTooltip:SetOwner(btn, "ANCHOR_RIGHT")
-        GameTooltip:SetText("Очистить все таблицы", 1, 0, 0)
-        GameTooltip:AddLine("Удалить данные всех гильдбанков у всех игроков", 0.7, 0.7, 0.7, true)
+        GameTooltip:SetText("Очистить локально", 1, 0, 0)
+        GameTooltip:AddLine("Удалить ТОЛЬКО ваши локальные таблицы", 0.7, 0.7, 0.7, true)
+        GameTooltip:AddLine("Без отправки сигнала в гильд", 0.7, 0.7, 0.7, true)
         GameTooltip:Show()
     end)
     clearBtn:SetScript("OnLeave", GameTooltip_Hide)
     clearBtn.owner = self
     clearBtn:SetScript("OnClick", function(btn)
-        StaticPopup_Show("NSAUK_CLEAR_GUILDBANK")
+        btn.owner:ClearLocalTablesOnly()
     end)
     self.clearBtn = clearBtn
     local scanBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
@@ -524,7 +525,6 @@ function NSAukGuildBankClass:CreateUI()
         btn.owner:ScanGuildBank()
     end)
     self.scanBtn = scanBtn
-
     local checkboxBank = CreateFrame("CheckButton", nil, frame, "InterfaceOptionsCheckButtonTemplate")
     checkboxBank:SetSize(24, 24)
     checkboxBank:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -150, -12)
@@ -593,21 +593,21 @@ function NSAukGuildBankClass:CreateUI()
     self.gridList = gridList
     self.gridScrollbar = scrollbar
     scrollbar.owner = self
-    scrollbar:SetScript("OnValueChanged", function(sb, value)
-        if sb.scrollFrame then sb.scrollFrame:SetVerticalScroll(value) end
+    scrollbar:SetScript("OnValueChanged", function(self, value)
+        if self.scrollFrame then self.scrollFrame:SetVerticalScroll(value) end
     end)
     scrollbar:SetMinMaxValues(0, 0)
     scrollbar:SetValue(0)
 
-    gridContainer:SetScript("OnMouseWheel", function(gc, delta)
-        local scrollBar = gc.scrollbar
+    gridContainer:SetScript("OnMouseWheel", function(self, delta)
+        local scrollBar = self.scrollbar
         if not scrollBar then return end
         local minVal, maxVal = scrollBar:GetMinMaxValues()
         if maxVal <= 0 then return end
-        local current = gc:GetVerticalScroll()
+        local current = self:GetVerticalScroll()
         local step = 36
         current = delta > 0 and math.max(0, current - step) or math.min(maxVal, current + step)
-        gc:SetVerticalScroll(current)
+        self:SetVerticalScroll(current)
         scrollBar:SetValue(current)
     end)
 
@@ -680,20 +680,29 @@ function NSAukGuildBankClass:ToggleShowGuildBank(isChecked)
     end
 end
 
+function NSAukGuildBankClass:ClearLocalTablesOnly()
+    local myName = UnitName("player")
+    if not NSAukGlobal then NSAukGlobal = {} end
+    if not NSAukGlobal.guildBanks then NSAukGlobal.guildBanks = {} end
+    if not NSAukGlobal.guildBankTimestamps then NSAukGlobal.guildBankTimestamps = {} end
+    if not NSAukGlobal.guildBankVersions then NSAukGlobal.guildBankVersions = {} end
+
+    NSAukGlobal.guildBanks[myName] = {}
+    NSAukGlobal.guildBankTimestamps[myName] = 0
+    NSAukGlobal.guildBankVersions[myName] = 0
+
+    if self.frame and self.frame:IsShown() then
+        self:RefreshDisplay()
+    end
+end
+
 function NSAukGuildBankClass:ClearAllGuildBanks(suppressBroadcast)
     if not NSAukGlobal then NSAukGlobal = {} end
     if not NSAukGlobal.guildBanks then NSAukGlobal.guildBanks = {} end
-    if not NSAukGlobal.guildBankVersions then NSAukGlobal.guildBankVersions = {} end
-    local clearedCount = 0
-    for ownerName, items in pairs(NSAukGlobal.guildBanks) do
-        if type(items) == "table" and #items > 0 then
-            clearedCount = clearedCount + 1
-        end
+    if not NSAukGlobal.guildBankTimestamps then NSAukGlobal.guildBankTimestamps = {} end
+    for ownerName, _ in pairs(NSAukGlobal.guildBanks) do
         NSAukGlobal.guildBanks[ownerName] = {}
-        NSAukGlobal.guildBankVersions[ownerName] = 0
-    end
-    if not suppressBroadcast then
-        SendAddonMessage("ns_GBClearAll", UnitName("player"), "GUILD")
+        NSAukGlobal.guildBankTimestamps[ownerName] = 0
     end
     if self.frame and self.frame:IsShown() then
         self:RefreshDisplay()
@@ -704,7 +713,8 @@ function NSAukGuildBankClass:BuildLocalItemList()
     local myName = UnitName("player")
     if not NSAukGlobal then NSAukGlobal = {} end
     if not NSAukGlobal.guildBanks then NSAukGlobal.guildBanks = {} end
-    local myItems = {}
+    local tempMap = {}
+
     for bag = 0, 4 do
         local numSlots = GetContainerNumSlots(bag)
         if numSlots and numSlots > 0 then
@@ -716,12 +726,16 @@ function NSAukGuildBankClass:BuildLocalItemList()
                     local _, _, itemIDStr = string.find(itemLink, "item:(%d+):")
                     local itemID = itemIDStr and tonumber(itemIDStr)
                     if itemID and itemID > 0 then
-                        table.insert(myItems, { link = itemLink, id = itemID, count = count, source = "bags" })
+                        if not tempMap[itemLink] then
+                            tempMap[itemLink] = { link = itemLink, id = itemID, count = 0, source = "bags" }
+                        end
+                        tempMap[itemLink].count = tempMap[itemLink].count + count
                     end
                 end
             end
         end
     end
+
     local bankBags = { -1, 5, 6, 7, 8, 9, 10, 11 }
     for _, bag in ipairs(bankBags) do
         local numSlots = GetContainerNumSlots(bag)
@@ -734,16 +748,25 @@ function NSAukGuildBankClass:BuildLocalItemList()
                     local _, _, itemIDStr = string.find(itemLink, "item:(%d+):")
                     local itemID = itemIDStr and tonumber(itemIDStr)
                     if itemID and itemID > 0 then
-                        table.insert(myItems, { link = itemLink, id = itemID, count = count, source = "bank" })
+                        if not tempMap[itemLink] then
+                            tempMap[itemLink] = { link = itemLink, id = itemID, count = 0, source = "bank" }
+                        end
+                        tempMap[itemLink].count = tempMap[itemLink].count + count
                     end
                 end
             end
         end
     end
+
+    local myItems = {}
+    for _, entry in pairs(tempMap) do
+        table.insert(myItems, entry)
+    end
+
     NSAukGlobal.guildBanks[myName] = myItems
-    NSAukGlobal.guildBankTimestamps[myName] = GetTime()
-    if not NSAukGlobal.guildBankVersions then NSAukGlobal.guildBankVersions = {} end
-    NSAukGlobal.guildBankVersions[myName] = (NSAukGlobal.guildBankVersions[myName] or 0) + 1
+    local currentTime = time()
+    NSAukGlobal.guildBankTimestamps[myName] = currentTime
+    NSAukGlobal.guildBankVersions[myName] = currentTime
 end
 
 function NSAukGuildBankClass:AggregateItems(itemTables)
@@ -811,9 +834,9 @@ function NSAukGuildBankClass:ConsolidateItems(items)
     return result
 end
 
-function NSAukGuildBankClass:SortItemsByClassSubclassQualityName(item_data)
+function NSAukGuildBankClass:SortItemsByClassSubclassQualityName(itemData)
     local itemInfoTable = {}
-    for _, entry in ipairs(item_data) do
+    for _, entry in ipairs(itemData) do
         local itemID = entry.id
         local itemLink = entry.link
         local count = entry.count
@@ -944,40 +967,27 @@ function NSAukGuildBankClass:BroadcastGuildBankData(ownersList)
         SendAddonMessage(PREFIX_END, UnitName("player") .. " 0", "GUILD")
         return
     end
-
     self.sendQueue = {}
     local myName = UnitName("player")
-    local myVersion = (NSAukGlobal.guildBankVersions and NSAukGlobal.guildBankVersions[myName]) or 0
 
     for _, ownerName in ipairs(ownersList) do
         local items = NSAukGlobal.guildBanks[ownerName]
         if items and type(items) == "table" and #items > 0 then
             local consolidated = self:ConsolidateItems(items)
             local sortedItems = self:SortItemsByClassSubclassQualityName(consolidated)
-            local versionToSend = 0
+            local timestampToSend = 0
 
             if ownerName == myName then
-                versionToSend = NSAukGlobal.guildBankVersions[myName] or 1
+                timestampToSend = NSAukGlobal.guildBankVersions[myName] or time()
             else
-                versionToSend = (NSAukGlobal.guildBankVersions and NSAukGlobal.guildBankVersions[ownerName]) or 0
+                timestampToSend = NSAukGlobal.guildBankVersions[ownerName] or 0
             end
 
-            -- Обновляем локальную таблицу данными, которые отправляем (для себя и ретранслятора)
-            local localVersion = (NSAukGlobal.guildBankVersions and NSAukGlobal.guildBankVersions[ownerName]) or 0
-            if versionToSend >= localVersion then
-                NSAukGlobal.guildBanks[ownerName] = consolidated
-                if not NSAukGlobal.guildBankVersions then
-                    NSAukGlobal.guildBankVersions = {}
-                end
-                NSAukGlobal.guildBankVersions[ownerName] = versionToSend
-                NSAukGlobal.guildBankTimestamps[ownerName] = GetTime()
-            end
-
-            for idx, entry in ipairs(sortedItems) do
+            for _, entry in ipairs(sortedItems) do
                 local msgStr = string.format("%s %s %d", ownerName, entry.link, entry.count)
                 table.insert(self.sendQueue, { prefix = "ns_MyGb", message = msgStr })
             end
-            table.insert(self.sendQueue, { prefix = PREFIX_END, message = ownerName .. "   " .. versionToSend })
+            table.insert(self.sendQueue, { prefix = PREFIX_END, message = ownerName .. " " .. timestampToSend })
         end
     end
 
@@ -996,7 +1006,6 @@ function NSAukGuildBankClass:BroadcastGuildBankData(ownersList)
                     sf:SetScript("OnUpdate", nil)
                     sf:Hide()
                     sf.owner.sendFrame = nil
-                    -- Если сканирование было активным, завершаем его после отправки
                     if sf.owner.isScanning then
                         sf.owner:FinalizeScan()
                     end
@@ -1005,12 +1014,10 @@ function NSAukGuildBankClass:BroadcastGuildBankData(ownersList)
         end)
         self.sendFrame:Show()
     elseif #self.sendQueue == 0 then
-        -- Если очередь пуста сразу (не должно быть при наличии данных), завершаем сканирование
         if self.isScanning then
             self:FinalizeScan()
         end
     end
-    -- Принудительное обновление UI удалено, чтобы не показывать старые данные до получения новых
 end
 
 function NSAukGuildBankClass:StartCooldownTimer()
@@ -1029,7 +1036,6 @@ function NSAukGuildBankClass:StartCooldownTimer()
         local elapsed = GetTime() - frame.startTime
         local remaining = math.ceil(SCAN_COOLDOWN - elapsed)
         frame.owner.cooldownRemaining = remaining
-
         if frame.owner.scanBtn then
             if remaining > 0 then
                 frame.owner.scanBtn:SetText(string.format("Ждите %d сек", remaining))
@@ -1059,8 +1065,6 @@ function NSAukGuildBankClass:OnScanRequestReceived(sender)
     local showBank = NSAukGlobal.guildBanksSettings[myName] and NSAukGlobal.guildBanksSettings[myName].showGuildBank
     local shouldSend = false
     local ownersToSend = {}
-
-    -- Отвечаем только если мы гильдбанк или ретранслятор
     if not isBank and not showBank then
         shouldSend = false
     elseif isBank and not showBank then
@@ -1096,10 +1100,7 @@ function NSAukGuildBankClass:OnScanRequestReceived(sender)
 end
 
 function NSAukGuildBankClass:ScanGuildBank()
-    if self.scanCooldown then
-        return
-    end
-
+    if self.scanCooldown then return end
     self.isScanning = true
     self.scanSessionStart = GetTime()
     self.scanSessionActive = true
@@ -1122,8 +1123,6 @@ function NSAukGuildBankClass:ScanGuildBank()
 
     self.itemEntries = {}
     self.ownershipData = {}
-    
-    -- Очищаем список товаров в окне при начале сканирования
     self:ClearGrid()
 
     if not NSAukGlobal or not NSAukGlobal.guildBanks then
@@ -1135,19 +1134,14 @@ function NSAukGuildBankClass:ScanGuildBank()
         return
     end
 
-    -- Все клиенты отправляют запрос, включая гильдбанк
     SendAddonMessage("ns_ScanGB", myName, "GUILD")
 
-    -- Гильдбанк обновляет свои данные и отправляет их в ответ на запрос
     if isBank then
         self:BuildLocalItemList()
         self:UpdateGoldInTable()
     end
 
-    -- Обрабатываем запрос локально сразу (чтобы ретранслятор видел данные)
     self:OnScanRequestReceived(myName)
-
-    -- Запускаем таймер кулдауна кнопки
     self:StartCooldownTimer()
 end
 
@@ -1165,19 +1159,19 @@ function NSAukGuildBankClass:ClearGrid()
     end
 end
 
-function NSAukGuildBankClass:GetItemOwners(item_key)
-    if not self.ownershipData or not self.ownershipData[item_key] then return nil end
+function NSAukGuildBankClass:GetItemOwners(itemKey)
+    if not self.ownershipData or not self.ownershipData[itemKey] then return nil end
     local owners = {}
-    for _, ownerData in ipairs(self.ownershipData[item_key]) do
+    for _, ownerData in ipairs(self.ownershipData[itemKey]) do
         table.insert(owners, ownerData)
     end
     table.sort(owners, function(a, b) return a.count > b.count end)
     return owners
 end
 
-function NSAukGuildBankClass:DisplayItems(item_data)
+function NSAukGuildBankClass:DisplayItems(itemData)
     self:ClearGrid()
-    if #item_data == 0 then
+    if #itemData == 0 then
         if self.statusText then
             self.statusText:SetText("Не найдено предметов в гильдбанках")
             self.statusText:SetTextColor(1, 0.5, 0.5)
@@ -1185,13 +1179,15 @@ function NSAukGuildBankClass:DisplayItems(item_data)
         return
     end
     self:Show()
-    local items_per_row = 16
-    local cell_size = 40
-    local y_pos = 0
+    local itemsPerRow = 16
+    local cellSize = 40
+    local yPos = 0
     local lastClass = nil
     local lastSubclass = nil
     local classSeparatorAdded = false
     local displayedCount = 0
+    local seenLinks = {}
+
     local classColors = {
         ["Оружие"] = { r = 0.8, g = 0.1, b = 0.1 },
         ["Броня"] = { r = 0.1, g = 0.5, b = 0.8 },
@@ -1215,172 +1211,197 @@ function NSAukGuildBankClass:DisplayItems(item_data)
         [6] = { r = 0.9, g = 0.8, b = 0.5 },
         [7] = { r = 0.9, g = 0.8, b = 0.5 }
     }
-    for i, entry in ipairs(item_data) do
-        local skipGold = string.find(entry.link or "", "|Hgold:")
+
+    for _, entry in ipairs(itemData) do
+        local skipGold = string.find(entry.link or "  ", "|Hgold:")
         if not skipGold then
-            local item_id = entry.id
-            local item_link = entry.link
-            local count = entry.count
-            local row = math.floor((displayedCount) / items_per_row)
-            local col = (displayedCount) % items_per_row
-            if row > 0 and col == 0 then
-                y_pos = y_pos + cell_size
-                classSeparatorAdded = false
-            end
-            local name, link, quality, iLevel, reqLevel, class, subclass
-            name, link, quality, iLevel, reqLevel, class, subclass = GetItemInfo(item_link or item_id)
-            class = class or "Unknown"
-            subclass = subclass or "Unknown"
-            quality = quality or 0
-            if lastClass ~= nil and class ~= lastClass and not classSeparatorAdded then
-                y_pos = y_pos + 5
-                classSeparatorAdded = true
-            elseif lastClass ~= nil and class == lastClass and subclass ~= lastSubclass and not classSeparatorAdded then
-                y_pos = y_pos + 2
-                classSeparatorAdded = true
-            end
-            lastClass = class
-            lastSubclass = subclass
-            local frame = CreateFrame("Button", nil, self.gridList)
-            frame:SetSize(36, 36)
-            frame:SetPoint("TOPLEFT", self.gridList, "TOPLEFT", col * cell_size + 2, -y_pos - 2)
-            frame.item_id = item_id
-            frame.item_link = item_link
-            frame.count = count
-            frame.class = class
-            frame.subclass = subclass
-            frame.owner = self
-            local bg = frame:CreateTexture(nil, "BACKGROUND")
-            bg:SetAllPoints(frame)
-            bg:SetTexture("Interface\\Buttons\\WHITE8X8")
-            local classColor = classColors[class] or { r = 0.1, g = 0.1, b = 0.1 }
-            bg:SetVertexColor(classColor.r * 0.3, classColor.g * 0.3, classColor.b * 0.3, 0.8)
-            frame.bg = bg
-            local border = frame:CreateTexture(nil, "BORDER")
-            border:SetSize(38, 38)
-            border:SetPoint("CENTER", frame, "CENTER")
-            border:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
-            border:SetBlendMode("ADD")
-            border:SetAlpha(0.5)
-            local qualityColor = qualityColors[quality] or { r = 0.5, g = 0.5, b = 0.5 }
-            border:SetVertexColor(qualityColor.r, qualityColor.g, qualityColor.b, 0.7)
-            frame.border = border
-            local icon = frame:CreateTexture(nil, "ARTWORK")
-            icon:SetSize(34, 34)
-            icon:SetPoint("CENTER", frame, "CENTER")
-            icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-            frame.icon = icon
-            local _, _, _, _, _, _, _, _, _, texture
-            _, _, _, _, _, _, _, _, _, texture = GetItemInfo(item_link or item_id)
-            if texture then
-                icon:SetTexture(texture)
+            if seenLinks[entry.link] then
+                -- Пропускаем дубликат
             else
-                icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
-                if item_id then GetItemInfo(item_id) end
-            end
-            if count > 1 then
-                local countText = frame:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
-                countText:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -1, 2)
-                countText:SetText(count)
-                countText:SetTextColor(1, 1, 0)
-                frame.countText = countText
-            end
-            frame:SetScript("OnEnter", function(f)
-                f.bg:SetVertexColor(0.3, 0.3, 0.5, 1.0)
-                GameTooltip:SetOwner(f, "ANCHOR_TOPRIGHT")
-                if f.item_link and not string.find(f.item_link, "|Hgold:") then
-                    GameTooltip:SetHyperlink(f.item_link)
+                seenLinks[entry.link] = true
+
+                local itemID = entry.id
+                local itemLink = entry.link
+                local count = entry.count
+                local row = math.floor(displayedCount / itemsPerRow)
+                local col = displayedCount % itemsPerRow
+
+                if row > 0 and col == 0 then
+                    yPos = yPos + cellSize
+                    classSeparatorAdded = false
+                end
+
+                local name, link, quality, _, _, class, subclass
+                name, link, quality, _, _, class, subclass = GetItemInfo(itemLink or itemID)
+                class = class or "Unknown"
+                subclass = subclass or "Unknown"
+                quality = quality or 0
+
+                if lastClass ~= nil and class ~= lastClass and not classSeparatorAdded then
+                    yPos = yPos + 5
+                    classSeparatorAdded = true
+                elseif lastClass ~= nil and class == lastClass and subclass ~= lastSubclass and not classSeparatorAdded then
+                    yPos = yPos + 2
+                    classSeparatorAdded = true
+                end
+                lastClass = class
+                lastSubclass = subclass
+
+                local frame = CreateFrame("Button", nil, self.gridList)
+                frame:SetSize(36, 36)
+                frame:SetPoint("TOPLEFT", self.gridList, "TOPLEFT", col * cellSize + 2, -yPos - 2)
+                frame.itemID = itemID
+                frame.itemLink = itemLink
+                frame.count = count
+                frame.class = class
+                frame.subclass = subclass
+                frame.owner = self
+
+                local bg = frame:CreateTexture(nil, "BACKGROUND")
+                bg:SetAllPoints(frame)
+                bg:SetTexture("Interface\\Buttons\\WHITE8X8")
+                local classColor = classColors[class] or { r = 0.1, g = 0.1, b = 0.1 }
+                bg:SetVertexColor(classColor.r * 0.3, classColor.g * 0.3, classColor.b * 0.3, 0.8)
+                frame.bg = bg
+
+                local border = frame:CreateTexture(nil, "BORDER")
+                border:SetSize(38, 38)
+                border:SetPoint("CENTER", frame, "CENTER")
+                border:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
+                border:SetBlendMode("ADD")
+                border:SetAlpha(0.5)
+                local qualityColor = qualityColors[quality] or { r = 0.5, g = 0.5, b = 0.5 }
+                border:SetVertexColor(qualityColor.r, qualityColor.g, qualityColor.b, 0.7)
+                frame.border = border
+
+                local icon = frame:CreateTexture(nil, "ARTWORK")
+                icon:SetSize(34, 34)
+                icon:SetPoint("CENTER", frame, "CENTER")
+                icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+                frame.icon = icon
+
+                local _, _, _, _, _, _, _, _, _, texture
+                _, _, _, _, _, _, _, _, _, texture = GetItemInfo(itemLink or itemID)
+                if texture then
+                    icon:SetTexture(texture)
                 else
-                    GameTooltip:SetText(f.item_link or "Золото", 1, 1, 1)
-                    GameTooltip:AddLine(string.format("Количество: %d", f.count or 0), 1, 1, 0)
+                    icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+                    if itemID then GetItemInfo(itemID) end
                 end
-                if f.count and f.count > 1 and not string.find(f.item_link or "", "|Hgold:") then
-                    GameTooltip:AddLine(string.format("Всего в гильдбанке: %d", f.count), 1, 1, 0)
+
+                if count > 1 then
+                    local countText = frame:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
+                    countText:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -1, 2)
+                    countText:SetText(count)
+                    countText:SetTextColor(1, 1, 0)
+                    frame.countText = countText
                 end
-                local owners = f.owner:GetItemOwners(f.item_link or f.item_id)
-                if owners and #owners > 0 then
-                    GameTooltip:AddLine("                 ")
-                    GameTooltip:AddLine("Находится у:    ", 0.8, 0.8, 1.0)
-                    local maxOwnersToShow = 5
-                    local ownersShown = 0
-                    for _, ownerData in ipairs(owners) do
-                        if ownersShown < maxOwnersToShow then
-                            local ownerName = ownerData.name
-                            local _, playerClass = UnitClass(ownerName)
-                            local color = "|cffffffff"
-                            if playerClass then
-                                local classColorsTbl = {
-                                    ["WARRIOR"] = "|cffC79C6E", ["PALADIN"] = "|cffF58CBA",
-                                    ["HUNTER"] = "|cffABD473", ["ROGUE"] = "|cffFFF569",
-                                    ["PRIEST"] = "|cffFFFFFF", ["DEATHKNIGHT"] = "|cffC41F3B",
-                                    ["SHAMAN"] = "|cff0070DE", ["MAGE"] = "|cff69CCF0",
-                                    ["WARLOCK"] = "|cff9482C9", ["DRUID"] = "|cffFF7D0A"
-                                }
-                                color = classColorsTbl[playerClass] or "|cffffffff"
+
+                frame:SetScript("OnEnter", function(f)
+                    f.bg:SetVertexColor(0.3, 0.3, 0.5, 1.0)
+                    GameTooltip:SetOwner(f, "ANCHOR_TOPRIGHT")
+                    if f.itemLink and not string.find(f.itemLink, "|Hgold:") then
+                        GameTooltip:SetHyperlink(f.itemLink)
+                    else
+                        GameTooltip:SetText(f.itemLink or "Золото", 1, 1, 1)
+                        GameTooltip:AddLine(string.format("Количество: %d", f.count or 0), 1, 1, 0)
+                    end
+                    if f.count and f.count > 1 and not string.find(f.itemLink or "  ", "|Hgold:") then
+                        GameTooltip:AddLine(string.format("Всего в гильдбанке: %d", f.count), 1, 1, 0)
+                    end
+                    local owners = f.owner:GetItemOwners(f.itemLink or f.itemID)
+                    if owners and #owners > 0 then
+                        GameTooltip:AddLine("                   ")
+                        GameTooltip:AddLine("Находится у:      ", 0.8, 0.8, 1.0)
+                        local maxOwnersToShow = 5
+                        local ownersShown = 0
+                        for _, ownerData in ipairs(owners) do
+                            if ownersShown < maxOwnersToShow then
+                                local ownerName = ownerData.name
+                                local _, playerClass = UnitClass(ownerName)
+                                local color = "|cffffffff"
+                                if playerClass then
+                                    local classColorsTbl = {
+                                        ["WARRIOR"] = "|cffC79C6E", ["PALADIN"] = "|cffF58CBA",
+                                        ["HUNTER"] = "|cffABD473", ["ROGUE"] = "|cffFFF569",
+                                        ["PRIEST"] = "|cffFFFFFF", ["DEATHKNIGHT"] = "|cffC41F3B",
+                                        ["SHAMAN"] = "|cff0070DE", ["MAGE"] = "|cff69CCF0",
+                                        ["WARLOCK"] = "|cff9482C9", ["DRUID"] = "|cffFF7D0A"
+                                    }
+                                    color = classColorsTbl[playerClass] or "|cffffffff"
+                                end
+                                GameTooltip:AddLine(string.format("  %s%s|r - %d", color, ownerName, ownerData.count), 1, 1, 1)
+                                ownersShown = ownersShown + 1
+                            else
+                                local remaining = #owners - maxOwnersToShow
+                                GameTooltip:AddLine(string.format("  ... и еще %d игроков", remaining), 0.7, 0.7, 0.7)
+                                break
                             end
-                            GameTooltip:AddLine(string.format("  %s%s|r - %d", color, ownerName, ownerData.count), 1, 1, 1)
-                            ownersShown = ownersShown + 1
-                        else
-                            local remaining = #owners - maxOwnersToShow
-                            GameTooltip:AddLine(string.format("  ... и еще %d игроков", remaining), 0.7, 0.7, 0.7)
-                            break
                         end
                     end
-                end
-                GameTooltip:Show()
-            end)
-            frame:SetScript("OnLeave", function(f)
-                local classColor = classColors[f.class or "Unknown"] or { r = 0.1, g = 0.1, b = 0.1 }
-                f.bg:SetVertexColor(classColor.r * 0.3, classColor.g * 0.3, classColor.b * 0.3, 0.8)
-                GameTooltip:Hide()
-            end)
-            frame:SetScript("OnClick", function(f, button)
-                if button == "LeftButton" then
-                    if f.item_link and not string.find(f.item_link, "|Hgold:") then
-                        ChatEdit_InsertLink(f.item_link)
+                    GameTooltip:Show()
+                end)
+
+                frame:SetScript("OnLeave", function(f)
+                    local classColor = classColors[f.class or "Unknown"] or { r = 0.1, g = 0.1, b = 0.1 }
+                    f.bg:SetVertexColor(classColor.r * 0.3, classColor.g * 0.3, classColor.b * 0.3, 0.8)
+                    GameTooltip:Hide()
+                end)
+
+                frame:SetScript("OnClick", function(f, button)
+                    if button == "LeftButton" then
+                        if f.itemLink and not string.find(f.itemLink, "|Hgold:") then
+                            ChatEdit_InsertLink(f.itemLink)
+                        end
                     end
-                end
-            end)
-            table.insert(self.itemFrames, frame)
-            displayedCount = displayedCount + 1
+                end)
+
+                table.insert(self.itemFrames, frame)
+                displayedCount = displayedCount + 1
+            end
         end
     end
-    local total_rows = math.ceil(displayedCount / items_per_row)
-    local total_height = total_rows * cell_size + (total_rows * 5)
-    self.gridList:SetHeight(total_height)
-    local scroll_range = total_height - self.gridContainer:GetHeight()
-    if scroll_range > 0 then
+
+    local totalRows = math.ceil(displayedCount / itemsPerRow)
+    local totalHeight = totalRows * cellSize + (totalRows * 5)
+    self.gridList:SetHeight(totalHeight)
+    local scrollRange = totalHeight - self.gridContainer:GetHeight()
+    if scrollRange > 0 then
         self.gridScrollbar:Show()
-        self.gridScrollbar:SetMinMaxValues(0, scroll_range)
+        self.gridScrollbar:SetMinMaxValues(0, scrollRange)
         self.gridScrollbar:SetValue(0)
         self.gridContainer:SetVerticalScroll(0)
     else
         self.gridScrollbar:Hide()
     end
-    local total_items = 0
-    local unique_items = 0
-    local class_counts = {}
-    for _, entry in ipairs(item_data) do
-        local skipGoldStats = string.find(entry.link or "", "|Hgold:")
+
+    local totalItems = 0
+    local uniqueItems = 0
+    local classCounts = {}
+    for _, entry in ipairs(itemData) do
+        local skipGoldStats = string.find(entry.link or "  ", "|Hgold:")
         if not skipGoldStats then
-            total_items = total_items + entry.count
-            unique_items = unique_items + 1
-            local _, _, _, _, _, class
-            _, _, _, _, _, class = GetItemInfo(entry.link or entry.id)
-            class = class or "Unknown"
-            class_counts[class] = (class_counts[class] or 0) + 1
+            if seenLinks[entry.link] then
+                totalItems = totalItems + entry.count
+                uniqueItems = uniqueItems + 1
+                local _, _, _, _, _, class
+                _, _, _, _, _, class = GetItemInfo(entry.link or entry.id)
+                class = class or "Unknown"
+                classCounts[class] = (classCounts[class] or 0) + 1
+            end
         end
     end
-    local statsText = string.format("%d (уникальных: %d)", total_items, unique_items)
+
+    local statsText = string.format("%d (уникальных: %d)", totalItems, uniqueItems)
     local mainClasses = { "Оружие", "Броня", "Доспехи", "Ресурсы", "Расходуемые", "Квестовые предметы" }
     local classStats = {}
     for _, className in ipairs(mainClasses) do
-        if class_counts[className] then
-            table.insert(classStats, string.format("%s: %d", className, class_counts[className]))
+        if classCounts[className] then
+            table.insert(classStats, string.format("%s: %d", className, classCounts[className]))
         end
     end
     local otherCount = 0
-    for className, count in pairs(class_counts) do
+    for className, count in pairs(classCounts) do
         local isMainClass = false
         for _, mainClass in ipairs(mainClasses) do
             if className == mainClass then isMainClass = true; break end
@@ -1393,7 +1414,7 @@ function NSAukGuildBankClass:DisplayItems(item_data)
         table.insert(classStats, string.format("Другое: %d", otherCount))
     end
     if #classStats > 0 then
-        statsText = statsText .. " [      " .. table.concat(classStats, ",      ") .. " ]     "
+        statsText = statsText .. " [ " .. table.concat(classStats, ", ") .. " ]  "
     end
     if self.statusText then
         self.statusText:SetText(statsText)
@@ -1413,7 +1434,6 @@ function NSAukGuildBankClass:RegisterAddonChatHandler()
             self.owner:OnScanRequestReceived(sender)
             return
         end
-
         if prefix == "ns_MyGb" then
             local parts = mysplit(message)
             if #parts < 3 then return end
@@ -1422,11 +1442,12 @@ function NSAukGuildBankClass:RegisterAddonChatHandler()
             local itemLink = table.concat(parts, " ", 2, #parts - 1)
             if not count or count <= 0 then return end
 
-            if not self.owner.incomingBuffers[ownerName] then
-                self.owner.incomingBuffers[ownerName] = { items = {}, finalized = false }
+            local bufferKey = sender .. "_" .. ownerName
+            if not self.owner.incomingBuffers[bufferKey] then
+                self.owner.incomingBuffers[bufferKey] = { items = {}, finalized = false, sender = sender, owner = ownerName }
             end
 
-            local buffer = self.owner.incomingBuffers[ownerName]
+            local buffer = self.owner.incomingBuffers[bufferKey]
             if buffer.finalized then
                 buffer.items = {}
                 buffer.finalized = false
@@ -1454,28 +1475,57 @@ function NSAukGuildBankClass:RegisterAddonChatHandler()
             local parts = mysplit(message)
             if #parts < 2 then return end
             local ownerName = parts[1]
-            local version = tonumber(parts[2])
+            local timestamp = tonumber(parts[2])
 
-            if not ownerName or not version then return end
+            if not ownerName or not timestamp then return end
 
-            if self.owner.incomingBuffers[ownerName] then
-                local buffer = self.owner.incomingBuffers[ownerName]
-                local existingVersion = (NSAukGlobal.guildBankVersions and NSAukGlobal.guildBankVersions[ownerName]) or 0
+            local bestBuffer = nil
+            local bestBufferKey = nil
+            local bestItemCount = 0
 
-                if version > existingVersion then
-                    NSAukGlobal.guildBanks[ownerName] = buffer.items
-                    if not NSAukGlobal.guildBankVersions then NSAukGlobal.guildBankVersions = {} end
-                    NSAukGlobal.guildBankVersions[ownerName] = version
+            for bufferKey, buffer in pairs(self.owner.incomingBuffers) do
+                if buffer.owner == ownerName and not buffer.finalized then
+                    if #buffer.items > bestItemCount then
+                        bestBuffer = buffer
+                        bestBufferKey = bufferKey
+                        bestItemCount = #buffer.items
+                    end
+                end
+            end
+
+            if bestBuffer then
+                local existingTimestamp = (NSAukGlobal.guildBankVersions and NSAukGlobal.guildBankVersions[ownerName]) or 0
+                local existingItems = NSAukGlobal.guildBanks[ownerName]
+                local existingItemCount = existingItems and #existingItems or 0
+                local isFromOwner = (bestBuffer.sender == ownerName)
+
+                local accepted = false
+
+                if isFromOwner then
+                    if timestamp >= existingTimestamp then
+                        accepted = true
+                    end
+                else
+                    if timestamp > existingTimestamp then
+                        accepted = true
+                    elseif timestamp == existingTimestamp and #bestBuffer.items > existingItemCount then
+                        accepted = true
+                    end
+                end
+
+                if accepted then
+                    NSAukGlobal.guildBanks[ownerName] = bestBuffer.items
+                    if not NSAukGlobal.guildBankVersions then
+                        NSAukGlobal.guildBankVersions = {}
+                    end
+                    NSAukGlobal.guildBankVersions[ownerName] = timestamp
                     NSAukGlobal.guildBankTimestamps[ownerName] = GetTime()
-
-                    -- Потоковая отрисовка: обновляем UI сразу при получении актуальной таблицы
                     self.owner:RefreshDisplay()
                 end
 
-                self.owner.incomingBuffers[ownerName] = nil
+                self.owner.incomingBuffers[bestBufferKey] = nil
             end
 
-            -- Завершаем сканирование после задержки
             if self.owner.isScanning then
                 if not self.owner.scanFinishFrame then
                     self.owner.scanFinishFrame = CreateFrame("Frame")
@@ -1508,17 +1558,13 @@ function NSAukGuildBankClass:RegisterAddonChatHandler()
         if prefix == "ns_GBUpdate" then
             return
         end
-        if prefix == "ns_GBClearAll" then
-            self.owner:ClearAllGuildBanks(true)
-            return
-        end
     end)
 end
 
-function NSAukGuildBankClass:ProcessItemResponse(item_entries, owner, sender)
+function NSAukGuildBankClass:ProcessItemResponse(itemEntries, owner, sender)
     if not self.itemEntries then self.itemEntries = {} end
     if not self.ownershipData then self.ownershipData = {} end
-    for _, entry in ipairs(item_entries) do
+    for _, entry in ipairs(itemEntries) do
         local uniqueKey = entry.link or entry.id
         if not self.ownershipData[uniqueKey] then self.ownershipData[uniqueKey] = {} end
         local ownerExists = false
@@ -1559,20 +1605,4 @@ function NSAukGuildBankClass:Hide()
     if self.frame then self.frame:Hide() end
 end
 
-if not StaticPopupDialogs["NSAUK_CLEAR_GUILDBANK"] then
-    StaticPopupDialogs["NSAUK_CLEAR_GUILDBANK"] = {
-        text = "Вы уверены что хотите очистить ВСЕ таблицы гильдбанка? Это действие нельзя отменить!",
-        button1 = "Да, очистить",
-        button2 = "Отмена",
-        OnAccept = function()
-            if NSAukGuildBank and NSAukGuildBank.ClearAllGuildBanks then
-                NSAukGuildBank:ClearAllGuildBanks(false)
-            end
-        end,
-        timeout = 0,
-        whileDead = true,
-        hideOnEscape = true,
-        preferredIndex = 3
-    }
-end
 NSAukGuildBank = NSAukGuildBankClass
